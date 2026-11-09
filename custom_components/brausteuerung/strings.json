@@ -1,0 +1,345 @@
+{
+  "title": "HA-Beer-Brew-Control",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up HA-Beer-Brew-Control",
+        "description": "Choose the temperature sensor and the heater and set the control parameters. Values of an existing v2.x installation are pre-filled.",
+        "data": {
+          "sensor_entity": "Temperature sensor",
+          "heater_entity": "Heater (switch)",
+          "hysteresis": "Hysteresis",
+          "safety_offset": "Safety offset",
+          "language": "Language",
+          "unit": "Unit"
+        },
+        "data_description": {
+          "sensor_entity": "Sensor that measures the mash temperature.",
+          "heater_entity": "Switch that turns the heater on and off.",
+          "hysteresis": "Switching band around the target temperature (0.1–5).",
+          "safety_offset": "The heater is switched off above target temperature + offset (0–20).",
+          "language": "Language of the card and the notifications.",
+          "unit": "Display unit of the temperatures (label only, no conversion)."
+        }
+      }
+    },
+    "error": {
+      "invalid_sensor": "Choose a valid sensor entity (sensor.*).",
+      "invalid_heater": "Choose a valid switch entity (switch.*).",
+      "invalid_hysteresis": "Invalid hysteresis (allowed: 0.1–5).",
+      "invalid_offset": "Invalid safety offset (allowed: 0–20).",
+      "invalid_language": "Invalid language.",
+      "invalid_unit": "Invalid unit."
+    },
+    "abort": {
+      "single_instance_allowed": "HA-Beer-Brew-Control is already set up. Only one instance is allowed."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "HA-Beer-Brew-Control settings",
+        "description": "Sensor and heater cannot be changed while brewing is running.",
+        "data": {
+          "sensor_entity": "Temperature sensor",
+          "heater_entity": "Heater (switch)",
+          "hysteresis": "Hysteresis",
+          "safety_offset": "Safety offset",
+          "language": "Language",
+          "unit": "Unit"
+        },
+        "data_description": {
+          "sensor_entity": "Sensor that measures the mash temperature.",
+          "heater_entity": "Switch that turns the heater on and off.",
+          "hysteresis": "Switching band around the target temperature (0.1–5).",
+          "safety_offset": "The heater is switched off above target temperature + offset (0–20).",
+          "language": "Language of the card and the notifications.",
+          "unit": "Display unit of the temperatures (label only, no conversion)."
+        }
+      }
+    },
+    "error": {
+      "invalid_sensor": "Choose a valid sensor entity (sensor.*).",
+      "invalid_heater": "Choose a valid switch entity (switch.*).",
+      "invalid_hysteresis": "Invalid hysteresis (allowed: 0.1–5).",
+      "invalid_offset": "Invalid safety offset (allowed: 0–20).",
+      "invalid_language": "Invalid language.",
+      "invalid_unit": "Invalid unit.",
+      "settings_locked": "Sensor and heater cannot be changed while brewing is running."
+    }
+  },
+  "selector": {
+    "language": {
+      "options": {
+        "en": "English",
+        "de": "Deutsch"
+      }
+    }
+  },
+  "entity": {
+    "button": {
+      "start": {
+        "name": "Start"
+      },
+      "stop": {
+        "name": "Stop"
+      },
+      "next_rest": {
+        "name": "Next rest"
+      }
+    },
+    "number": {
+      "hysteresis": {
+        "name": "Hysteresis"
+      },
+      "safety_offset": {
+        "name": "Safety offset"
+      }
+    },
+    "select": {
+      "language": {
+        "name": "Language",
+        "state": {
+          "en": "English",
+          "de": "Deutsch"
+        }
+      },
+      "unit": {
+        "name": "Unit"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "idle": "Idle",
+          "running": "Running",
+          "paused": "Paused",
+          "done": "Done"
+        }
+      },
+      "current_rest": {
+        "name": "Current rest"
+      },
+      "target_temperature": {
+        "name": "Target temperature"
+      },
+      "safety_threshold": {
+        "name": "Safety threshold"
+      },
+      "hold_end": {
+        "name": "Hold end"
+      },
+      "brew_started": {
+        "name": "Brew started"
+      }
+    }
+  },
+  "exceptions": {
+    "not_loaded": {
+      "message": "HA-Beer-Brew-Control is not loaded."
+    },
+    "recipe_locked": {
+      "message": "The recipe cannot be changed while brewing is running."
+    },
+    "settings_locked": {
+      "message": "Sensor and heater cannot be changed while brewing is running."
+    },
+    "already_running": {
+      "message": "Brewing is already running."
+    },
+    "not_running": {
+      "message": "Brewing is not running."
+    },
+    "recipe_empty": {
+      "message": "The recipe is empty."
+    },
+    "not_configured": {
+      "message": "Temperature sensor or heater is not configured."
+    },
+    "heater_unavailable": {
+      "message": "The heater is unavailable."
+    },
+    "sensor_invalid": {
+      "message": "The temperature sensor has no valid value."
+    },
+    "legacy_automations_active": {
+      "message": "Automations of the old brewing control (v2.x) are still active. Remove them before starting."
+    },
+    "invalid_temperature": {
+      "message": "Invalid temperature (allowed: 0–100)."
+    },
+    "invalid_duration": {
+      "message": "Invalid duration (allowed: whole minutes 1–1440)."
+    },
+    "invalid_name": {
+      "message": "Invalid name (max. 64 characters, no control characters)."
+    },
+    "invalid_index": {
+      "message": "Invalid rest position."
+    },
+    "too_many_rests": {
+      "message": "Too many rests (max. 30)."
+    },
+    "library_full": {
+      "message": "The recipe library is full (max. 100 recipes)."
+    },
+    "name_exists": {
+      "message": "A recipe with this name already exists."
+    },
+    "recipe_not_found": {
+      "message": "Recipe not found."
+    },
+    "invalid_hysteresis": {
+      "message": "Invalid hysteresis (allowed: greater than 0 up to 5)."
+    },
+    "invalid_offset": {
+      "message": "Invalid safety offset (allowed: 0–20)."
+    },
+    "invalid_entity": {
+      "message": "Invalid entity."
+    },
+    "invalid_language": {
+      "message": "Invalid language."
+    },
+    "invalid_unit": {
+      "message": "Invalid unit."
+    },
+    "storage_error": {
+      "message": "The data could not be saved."
+    },
+    "internal_error": {
+      "message": "Internal error. The heater was switched off for safety reasons."
+    }
+  },
+  "issues": {
+    "legacy_automations": {
+      "title": "Old brewing control automations found",
+      "description": "The automations of the old brewing control (v2.x) still exist: {entities}. Two controllers must never switch the same heater. Remove these automations (Settings → Automations & scenes). Starting a brew is blocked while one of them is enabled."
+    },
+    "legacy_helpers": {
+      "title": "Old brewing control helpers found",
+      "description": "Helpers of the old brewing control (v2.x, `input_text.brau_*`, `input_number.brau_*`, `input_select.brau_*`, `timer.brau_raststufe`, `input_button.brau_naechste_rast`) still exist. Their values have been taken over. Remove them from your configuration."
+    },
+    "legacy_resource": {
+      "title": "Old dashboard resource of the brewing card found",
+      "description": "The dashboard resource `/local/brausteuerung-card.js` of the old version is still registered. Remove it (Settings → Dashboards → Resources) and the old file from `www/`, then reload the browser. The integration provides the card itself."
+    }
+  },
+  "services": {
+    "start": {
+      "name": "Start brewing",
+      "description": "Starts the mash schedule with the first rest."
+    },
+    "stop": {
+      "name": "Stop brewing",
+      "description": "Stops brewing in any state and switches the heater off."
+    },
+    "next_rest": {
+      "name": "Next rest",
+      "description": "Skips to the next rest (only while running)."
+    },
+    "add_rest": {
+      "name": "Add rest",
+      "description": "Appends a rest to the active recipe.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Name of the rest (empty: \"Rast N\")."
+        },
+        "temperature": {
+          "name": "Temperature",
+          "description": "Target temperature of the rest (0–100, display unit)."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "Hold time in whole minutes (1–1440)."
+        }
+      }
+    },
+    "update_rest": {
+      "name": "Update rest",
+      "description": "Replaces the rest at the given position.",
+      "fields": {
+        "index": {
+          "name": "Position",
+          "description": "Position of the rest, starting at 0."
+        },
+        "name": {
+          "name": "Name",
+          "description": "Name of the rest (empty: \"Rast N\")."
+        },
+        "temperature": {
+          "name": "Temperature",
+          "description": "Target temperature of the rest (0–100, display unit)."
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "Hold time in whole minutes (1–1440)."
+        }
+      }
+    },
+    "delete_rest": {
+      "name": "Delete rest",
+      "description": "Removes the rest at the given position.",
+      "fields": {
+        "index": {
+          "name": "Position",
+          "description": "Position of the rest, starting at 0."
+        }
+      }
+    },
+    "move_rest": {
+      "name": "Move rest",
+      "description": "Moves a rest up or down by one position.",
+      "fields": {
+        "index": {
+          "name": "Position",
+          "description": "Position of the rest, starting at 0."
+        },
+        "direction": {
+          "name": "Direction",
+          "description": "-1 moves the rest up, 1 moves it down."
+        }
+      }
+    },
+    "clear_recipe": {
+      "name": "Clear recipe",
+      "description": "Removes all rests from the active recipe."
+    },
+    "save_recipe": {
+      "name": "Save recipe",
+      "description": "Saves the active recipe in the library.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Name of the recipe in the library."
+        },
+        "overwrite": {
+          "name": "Overwrite",
+          "description": "Overwrite an existing recipe with the same name."
+        }
+      }
+    },
+    "load_recipe": {
+      "name": "Load recipe",
+      "description": "Loads a recipe from the library as the active recipe.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Name of the recipe in the library."
+        }
+      }
+    },
+    "delete_recipe": {
+      "name": "Delete recipe",
+      "description": "Removes a recipe from the library.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Name of the recipe in the library."
+        }
+      }
+    }
+  }
+}

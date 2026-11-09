@@ -1,0 +1,16 @@
+{
+  "name": "ha-beer-brew-control",
+  "version": "3.0.0",
+  "description": "HA-Beer-Brew-Control – Custom-Integration (HACS) mit mitgelieferter Lovelace-Karte für die Maischesteuerung",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "devDependencies": {
+    "fast-check": "4.8.0",
+    "jsdom": "25.0.1",
+    "vitest": "4.1.8"
+  }
+}

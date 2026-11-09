@@ -1,0 +1,117 @@
+start:
+stop:
+next_rest:
+add_rest:
+  fields:
+    name:
+      example: "Eiweißrast"
+      selector:
+        text:
+    temperature:
+      required: true
+      example: 55
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.1
+          mode: box
+    duration:
+      required: true
+      example: 15
+      selector:
+        number:
+          min: 1
+          max: 1440
+          step: 1
+          mode: box
+update_rest:
+  fields:
+    index:
+      required: true
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 29
+          step: 1
+          mode: box
+    name:
+      example: "Eiweißrast"
+      selector:
+        text:
+    temperature:
+      required: true
+      example: 55
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.1
+          mode: box
+    duration:
+      required: true
+      example: 15
+      selector:
+        number:
+          min: 1
+          max: 1440
+          step: 1
+          mode: box
+delete_rest:
+  fields:
+    index:
+      required: true
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 29
+          step: 1
+          mode: box
+move_rest:
+  fields:
+    index:
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 0
+          max: 29
+          step: 1
+          mode: box
+    direction:
+      required: true
+      example: -1
+      selector:
+        number:
+          min: -1
+          max: 1
+          step: 2
+          mode: box
+clear_recipe:
+save_recipe:
+  fields:
+    name:
+      required: true
+      example: "Helles"
+      selector:
+        text:
+    overwrite:
+      default: false
+      selector:
+        boolean:
+load_recipe:
+  fields:
+    name:
+      required: true
+      example: "Helles"
+      selector:
+        text:
+delete_recipe:
+  fields:
+    name:
+      required: true
+      example: "Helles"
+      selector:
+        text:

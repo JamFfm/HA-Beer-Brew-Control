@@ -1,0 +1,92 @@
+{
+  "entity": {
+    "button": {
+      "start": {
+        "default": "mdi:play"
+      },
+      "stop": {
+        "default": "mdi:stop"
+      },
+      "next_rest": {
+        "default": "mdi:skip-next"
+      }
+    },
+    "number": {
+      "hysteresis": {
+        "default": "mdi:arrow-expand-vertical"
+      },
+      "safety_offset": {
+        "default": "mdi:shield-alert-outline"
+      }
+    },
+    "select": {
+      "language": {
+        "default": "mdi:translate"
+      },
+      "unit": {
+        "default": "mdi:thermometer"
+      }
+    },
+    "sensor": {
+      "status": {
+        "default": "mdi:kettle-outline",
+        "state": {
+          "idle": "mdi:kettle-outline",
+          "running": "mdi:kettle-steam",
+          "paused": "mdi:pause-circle-outline",
+          "done": "mdi:check-circle-outline"
+        }
+      },
+      "current_rest": {
+        "default": "mdi:format-list-numbered"
+      },
+      "target_temperature": {
+        "default": "mdi:thermometer-check"
+      },
+      "safety_threshold": {
+        "default": "mdi:thermometer-alert"
+      },
+      "hold_end": {
+        "default": "mdi:timer-sand"
+      },
+      "brew_started": {
+        "default": "mdi:clock-start"
+      }
+    }
+  },
+  "services": {
+    "start": {
+      "service": "mdi:play"
+    },
+    "stop": {
+      "service": "mdi:stop"
+    },
+    "next_rest": {
+      "service": "mdi:skip-next"
+    },
+    "add_rest": {
+      "service": "mdi:playlist-plus"
+    },
+    "update_rest": {
+      "service": "mdi:playlist-edit"
+    },
+    "delete_rest": {
+      "service": "mdi:playlist-remove"
+    },
+    "move_rest": {
+      "service": "mdi:swap-vertical"
+    },
+    "clear_recipe": {
+      "service": "mdi:delete-sweep-outline"
+    },
+    "save_recipe": {
+      "service": "mdi:content-save"
+    },
+    "load_recipe": {
+      "service": "mdi:folder-open-outline"
+    },
+    "delete_recipe": {
+      "service": "mdi:delete-outline"
+    }
+  }
+}

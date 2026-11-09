@@ -1,0 +1,14 @@
+{
+  "domain": "brausteuerung",
+  "name": "HA-Beer-Brew-Control",
+  "codeowners": ["@JamFfm"],
+  "config_flow": true,
+  "dependencies": ["frontend", "http", "websocket_api"],
+  "documentation": "https://github.com/JamFfm/HA-Beer-Brew-Control",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/JamFfm/HA-Beer-Brew-Control/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "3.0.0"
+}
