@@ -3,12 +3,44 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.loader import async_get_integration
+
+# Vollständigkeitsprüfung VOR den Untermodul-Importen: Fehlt eine Datei (z. B.
+# unvollständig hochgeladenes Repository/Release), meldet Python sonst irreführend
+# "cannot import name '…' from partially initialized module … (circular import)".
+# Die Liste prüft tests/test_repo_consistency.py gegen die vorhandenen *.py-Dateien.
+_REQUIRED_MODULES = (
+    "button",
+    "card_registration",
+    "config_flow",
+    "const",
+    "controller",
+    "entity",
+    "logic",
+    "messages",
+    "migration",
+    "number",
+    "select",
+    "sensor",
+    "services",
+    "storage",
+    "validation",
+    "websocket",
+)
+_PACKAGE_DIR = Path(__file__).parent
+_missing = [f"{m}.py" for m in _REQUIRED_MODULES if not (_PACKAGE_DIR / f"{m}.py").is_file()]
+if _missing:
+    raise ImportError(
+        "HA-Beer-Brew-Control is incompletely installed (unvollständig installiert), "
+        f"missing files: {', '.join(_missing)} in {_PACKAGE_DIR}. "
+        "Re-download the integration in HACS and restart Home Assistant."
+    )
 
 from . import services, websocket
 from .card_registration import async_register_card

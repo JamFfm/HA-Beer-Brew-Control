@@ -2,7 +2,7 @@
  * brausteuerung-card.js
  *
  * Custom Lovelace Card der Brausteuerung (LitElement-basiert), ausgeliefert von
- * der Integration `brausteuerung` (v3.0.0).
+ * der Integration `brausteuerung` (v3.0.1).
  *
  * Die Karte ist ein dünner Client: Regelung, Sicherheitsfunktionen, Rezept und
  * Bibliothek laufen serverseitig in der Python-Integration. Die Karte
@@ -24,7 +24,7 @@
 // Der Cache-Buster ist die Query `?v=<Manifest-Version>`, mit der die
 // Integration die Karte per `add_extra_js_url` einbindet; das Logikmodul wird
 // mit genau derselben Query nachgeladen (keine handgepflegte Version im Import).
-const VERSION = "3.0.0";
+const VERSION = "3.0.1";
 
 /**
  * URL des Logikmoduls zur (absoluten) URL der Karte: gleiches Verzeichnis,

@@ -106,7 +106,7 @@ Frontend ein.
 
 **Notlösung, nur falls die Karte nicht im Kartenpicker erscheint:** unter
 **Einstellungen → Dashboards → Ressourcen** die Ressource
-`/brausteuerung_frontend/brausteuerung-card.js?v=3.0.0` vom Typ
+`/brausteuerung_frontend/brausteuerung-card.js?v=3.0.1` vom Typ
 **JavaScript-Modul** eintragen.
 
 ---
@@ -503,7 +503,7 @@ anschließend in HA-Beer-Brew-Control als Temperatursensor auswählen. Beispiele
 
 Updates kommen über HACS (**HACS → HA-Beer-Brew-Control → Aktualisieren**, danach
 Home Assistant neu starten). Ein manuelles Versionieren der Ressource entfällt:
-Die Integration bindet die Karte mit ihrer Version (`?v=3.0.0`) ein, der Browser
+Die Integration bindet die Karte mit ihrer Version (`?v=3.0.1`) ein, der Browser
 lädt nach einem Update automatisch die neue Datei. Passt die geladene Karte nicht
 zur Version der Integration, zeigt die Karte einen Hinweis; dann die Seite neu
 laden.
@@ -542,12 +542,23 @@ notwendig.
    mit Beschreibung und Topics anlegen; die
    Action `Validate` (HACS und hassfest) muss grün sein.
 2. Das Icon liegt unter `custom_components/brausteuerung/brand/icon.png`.
-3. Ein GitHub-**Release** (z. B. `v3.0.0`) erstellen.
+3. Ein GitHub-**Release** (z. B. `v3.0.1`) erstellen. Vorher prüfen, dass der
+   Ordner `custom_components/brausteuerung/` auf GitHub vollständig ist (alle
+   `*.py`-Dateien und `translations/`, aber kein `__pycache__/`).
 4. Pull Request im Repository `hacs/default` stellen (Datei `integration`).
 
 ---
 
 ## 16. CHANGELOG
+
+### 3.0.1
+
+- Fix: Hinzufügen der Integration brach mit „cannot import name 'validation' from
+  partially initialized module … (circular import)“ ab. Ursache war kein
+  Zirkularimport, sondern im Release v3.0.0 fehlende Dateien (u. a.
+  `validation.py`, `config_flow.py`, `const.py`, `translations/`). Release
+  vollständig; die Integration prüft beim Laden jetzt alle Moduldateien und nennt
+  fehlende Dateien im Protokoll mit klarer Meldung.
 
 ### 3.0.0
 

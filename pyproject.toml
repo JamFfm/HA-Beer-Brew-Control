@@ -14,6 +14,8 @@ select = ["E", "F", "W", "I", "B", "UP", "ASYNC", "S"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]
+# Vollständigkeitsprüfung steht bewusst vor den Untermodul-Importen.
+"custom_components/brausteuerung/__init__.py" = ["E402"]
 
 [tool.coverage.run]
 source = ["custom_components/brausteuerung"]

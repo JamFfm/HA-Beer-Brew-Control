@@ -1,0 +1,345 @@
+{
+  "title": "HA-Beer-Brew-Control",
+  "config": {
+    "step": {
+      "user": {
+        "title": "HA-Beer-Brew-Control einrichten",
+        "description": "Temperatursensor und Heizung auswählen und die Regelparameter festlegen. Werte einer vorhandenen v2.x-Installation sind vorbelegt.",
+        "data": {
+          "sensor_entity": "Temperatursensor",
+          "heater_entity": "Heizung (Schalter)",
+          "hysteresis": "Hysterese",
+          "safety_offset": "Sicherheits-Offset",
+          "language": "Sprache",
+          "unit": "Einheit"
+        },
+        "data_description": {
+          "sensor_entity": "Sensor, der die Maischetemperatur misst.",
+          "heater_entity": "Schalter, der die Heizung ein- und ausschaltet.",
+          "hysteresis": "Schaltband um die Solltemperatur (0,1–5).",
+          "safety_offset": "Oberhalb von Solltemperatur + Offset wird die Heizung abgeschaltet (0–20).",
+          "language": "Sprache der Karte und der Benachrichtigungen.",
+          "unit": "Anzeigeeinheit der Temperaturen (nur Beschriftung, keine Umrechnung)."
+        }
+      }
+    },
+    "error": {
+      "invalid_sensor": "Bitte eine gültige Sensor-Entität (sensor.*) wählen.",
+      "invalid_heater": "Bitte eine gültige Schalter-Entität (switch.*) wählen.",
+      "invalid_hysteresis": "Ungültige Hysterese (erlaubt: 0,1–5).",
+      "invalid_offset": "Ungültiger Sicherheits-Offset (erlaubt: 0–20).",
+      "invalid_language": "Ungültige Sprache.",
+      "invalid_unit": "Ungültige Einheit."
+    },
+    "abort": {
+      "single_instance_allowed": "HA-Beer-Brew-Control ist bereits eingerichtet. Es ist nur eine Instanz erlaubt."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Einstellungen von HA-Beer-Brew-Control",
+        "description": "Sensor und Heizung können während eines laufenden Brauvorgangs nicht geändert werden.",
+        "data": {
+          "sensor_entity": "Temperatursensor",
+          "heater_entity": "Heizung (Schalter)",
+          "hysteresis": "Hysterese",
+          "safety_offset": "Sicherheits-Offset",
+          "language": "Sprache",
+          "unit": "Einheit"
+        },
+        "data_description": {
+          "sensor_entity": "Sensor, der die Maischetemperatur misst.",
+          "heater_entity": "Schalter, der die Heizung ein- und ausschaltet.",
+          "hysteresis": "Schaltband um die Solltemperatur (0,1–5).",
+          "safety_offset": "Oberhalb von Solltemperatur + Offset wird die Heizung abgeschaltet (0–20).",
+          "language": "Sprache der Karte und der Benachrichtigungen.",
+          "unit": "Anzeigeeinheit der Temperaturen (nur Beschriftung, keine Umrechnung)."
+        }
+      }
+    },
+    "error": {
+      "invalid_sensor": "Bitte eine gültige Sensor-Entität (sensor.*) wählen.",
+      "invalid_heater": "Bitte eine gültige Schalter-Entität (switch.*) wählen.",
+      "invalid_hysteresis": "Ungültige Hysterese (erlaubt: 0,1–5).",
+      "invalid_offset": "Ungültiger Sicherheits-Offset (erlaubt: 0–20).",
+      "invalid_language": "Ungültige Sprache.",
+      "invalid_unit": "Ungültige Einheit.",
+      "settings_locked": "Sensor und Heizung können während eines laufenden Brauvorgangs nicht geändert werden."
+    }
+  },
+  "selector": {
+    "language": {
+      "options": {
+        "en": "English",
+        "de": "Deutsch"
+      }
+    }
+  },
+  "entity": {
+    "button": {
+      "start": {
+        "name": "Start"
+      },
+      "stop": {
+        "name": "Stopp"
+      },
+      "next_rest": {
+        "name": "Nächste Rast"
+      }
+    },
+    "number": {
+      "hysteresis": {
+        "name": "Hysterese"
+      },
+      "safety_offset": {
+        "name": "Sicherheits-Offset"
+      }
+    },
+    "select": {
+      "language": {
+        "name": "Sprache",
+        "state": {
+          "en": "English",
+          "de": "Deutsch"
+        }
+      },
+      "unit": {
+        "name": "Einheit"
+      }
+    },
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "idle": "Bereit",
+          "running": "Läuft",
+          "paused": "Pausiert",
+          "done": "Fertig"
+        }
+      },
+      "current_rest": {
+        "name": "Aktuelle Rast"
+      },
+      "target_temperature": {
+        "name": "Solltemperatur"
+      },
+      "safety_threshold": {
+        "name": "Sicherheitsschwelle"
+      },
+      "hold_end": {
+        "name": "Ende der Rast"
+      },
+      "brew_started": {
+        "name": "Brauvorgang gestartet"
+      }
+    }
+  },
+  "exceptions": {
+    "not_loaded": {
+      "message": "HA-Beer-Brew-Control ist nicht geladen."
+    },
+    "recipe_locked": {
+      "message": "Das Rezept kann während eines laufenden Brauvorgangs nicht geändert werden."
+    },
+    "settings_locked": {
+      "message": "Sensor und Heizung können während eines laufenden Brauvorgangs nicht geändert werden."
+    },
+    "already_running": {
+      "message": "Der Brauvorgang läuft bereits."
+    },
+    "not_running": {
+      "message": "Es läuft kein Brauvorgang."
+    },
+    "recipe_empty": {
+      "message": "Das Rezept ist leer."
+    },
+    "not_configured": {
+      "message": "Temperatursensor oder Heizung ist nicht konfiguriert."
+    },
+    "heater_unavailable": {
+      "message": "Die Heizung ist nicht verfügbar."
+    },
+    "sensor_invalid": {
+      "message": "Der Temperatursensor liefert keinen gültigen Wert."
+    },
+    "legacy_automations_active": {
+      "message": "Automationen der alten Brausteuerung (v2.x) sind noch aktiv. Bitte vor dem Start entfernen."
+    },
+    "invalid_temperature": {
+      "message": "Ungültige Temperatur (erlaubt: 0–100)."
+    },
+    "invalid_duration": {
+      "message": "Ungültige Dauer (erlaubt: ganze Minuten 1–1440)."
+    },
+    "invalid_name": {
+      "message": "Ungültiger Name (max. 64 Zeichen, keine Steuerzeichen)."
+    },
+    "invalid_index": {
+      "message": "Ungültige Rastposition."
+    },
+    "too_many_rests": {
+      "message": "Zu viele Rasten (max. 30)."
+    },
+    "library_full": {
+      "message": "Die Rezeptbibliothek ist voll (max. 100 Rezepte)."
+    },
+    "name_exists": {
+      "message": "Ein Rezept mit diesem Namen existiert bereits."
+    },
+    "recipe_not_found": {
+      "message": "Rezept nicht gefunden."
+    },
+    "invalid_hysteresis": {
+      "message": "Ungültige Hysterese (erlaubt: größer 0 bis 5)."
+    },
+    "invalid_offset": {
+      "message": "Ungültiger Sicherheits-Offset (erlaubt: 0–20)."
+    },
+    "invalid_entity": {
+      "message": "Ungültige Entität."
+    },
+    "invalid_language": {
+      "message": "Ungültige Sprache."
+    },
+    "invalid_unit": {
+      "message": "Ungültige Einheit."
+    },
+    "storage_error": {
+      "message": "Die Daten konnten nicht gespeichert werden."
+    },
+    "internal_error": {
+      "message": "Interner Fehler. Die Heizung wurde aus Sicherheitsgründen ausgeschaltet."
+    }
+  },
+  "issues": {
+    "legacy_automations": {
+      "title": "Automationen der alten Brausteuerung gefunden",
+      "description": "Die Automationen der alten Brausteuerung (v2.x) sind noch vorhanden: {entities}. Zwei Regler dürfen nie dieselbe Heizung schalten. Bitte diese Automationen entfernen (Einstellungen → Automationen & Szenen). Solange eine davon eingeschaltet ist, ist der Start gesperrt."
+    },
+    "legacy_helpers": {
+      "title": "Helfer der alten Brausteuerung gefunden",
+      "description": "Helfer der alten Brausteuerung (v2.x, `input_text.brau_*`, `input_number.brau_*`, `input_select.brau_*`, `timer.brau_raststufe`, `input_button.brau_naechste_rast`) sind noch vorhanden. Ihre Werte wurden übernommen. Bitte aus der Konfiguration entfernen."
+    },
+    "legacy_resource": {
+      "title": "Alte Dashboard-Ressource der Brau-Karte gefunden",
+      "description": "Die Dashboard-Ressource `/local/brausteuerung-card.js` der alten Version ist noch eingetragen. Bitte entfernen (Einstellungen → Dashboards → Ressourcen), die alte Datei aus `www/` löschen und den Browser neu laden. Die Integration liefert die Karte selbst aus."
+    }
+  },
+  "services": {
+    "start": {
+      "name": "Brauvorgang starten",
+      "description": "Startet den Maischplan mit der ersten Rast."
+    },
+    "stop": {
+      "name": "Brauvorgang stoppen",
+      "description": "Stoppt den Brauvorgang in jedem Zustand und schaltet die Heizung aus."
+    },
+    "next_rest": {
+      "name": "Nächste Rast",
+      "description": "Springt zur nächsten Rast (nur bei laufendem Brauvorgang)."
+    },
+    "add_rest": {
+      "name": "Rast hinzufügen",
+      "description": "Hängt eine Rast an das aktive Rezept an.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Name der Rast (leer: „Rast N“)."
+        },
+        "temperature": {
+          "name": "Temperatur",
+          "description": "Solltemperatur der Rast (0–100, Anzeigeeinheit)."
+        },
+        "duration": {
+          "name": "Dauer",
+          "description": "Haltezeit in ganzen Minuten (1–1440)."
+        }
+      }
+    },
+    "update_rest": {
+      "name": "Rast ändern",
+      "description": "Ersetzt die Rast an der angegebenen Position.",
+      "fields": {
+        "index": {
+          "name": "Position",
+          "description": "Position der Rast, beginnend bei 0."
+        },
+        "name": {
+          "name": "Name",
+          "description": "Name der Rast (leer: „Rast N“)."
+        },
+        "temperature": {
+          "name": "Temperatur",
+          "description": "Solltemperatur der Rast (0–100, Anzeigeeinheit)."
+        },
+        "duration": {
+          "name": "Dauer",
+          "description": "Haltezeit in ganzen Minuten (1–1440)."
+        }
+      }
+    },
+    "delete_rest": {
+      "name": "Rast löschen",
+      "description": "Entfernt die Rast an der angegebenen Position.",
+      "fields": {
+        "index": {
+          "name": "Position",
+          "description": "Position der Rast, beginnend bei 0."
+        }
+      }
+    },
+    "move_rest": {
+      "name": "Rast verschieben",
+      "description": "Verschiebt eine Rast um eine Position nach oben oder unten.",
+      "fields": {
+        "index": {
+          "name": "Position",
+          "description": "Position der Rast, beginnend bei 0."
+        },
+        "direction": {
+          "name": "Richtung",
+          "description": "-1 verschiebt die Rast nach oben, 1 nach unten."
+        }
+      }
+    },
+    "clear_recipe": {
+      "name": "Rezept leeren",
+      "description": "Entfernt alle Rasten aus dem aktiven Rezept."
+    },
+    "save_recipe": {
+      "name": "Rezept speichern",
+      "description": "Speichert das aktive Rezept in der Bibliothek.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Name des Rezepts in der Bibliothek."
+        },
+        "overwrite": {
+          "name": "Überschreiben",
+          "description": "Ein vorhandenes Rezept mit gleichem Namen überschreiben."
+        }
+      }
+    },
+    "load_recipe": {
+      "name": "Rezept laden",
+      "description": "Lädt ein Rezept aus der Bibliothek als aktives Rezept.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Name des Rezepts in der Bibliothek."
+        }
+      }
+    },
+    "delete_recipe": {
+      "name": "Rezept löschen",
+      "description": "Entfernt ein Rezept aus der Bibliothek.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Name des Rezepts in der Bibliothek."
+        }
+      }
+    }
+  }
+}
