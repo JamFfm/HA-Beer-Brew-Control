@@ -57,7 +57,9 @@ function htmlTag(strings, ...values) {
     out += strings[i];
     if (i < values.length) out += renderValue(values[i]);
   }
-  return { _html: out };
+  // `_strings`: Template-Identität wie bei Lit (gleiches Array = DOM wird
+  // wiederverwendet, nur Bindings werden aktualisiert).
+  return { _html: out, _strings: strings };
 }
 
 function cssTag() {
@@ -103,7 +105,7 @@ afterEach(() => {
 function makeSnapshot(overrides = {}) {
   const { settings, ...rest } = overrides;
   return {
-    version: "3.0.1",
+    version: "3.0.3",
     loaded: true,
     status: "idle",
     phase: null,
@@ -212,10 +214,36 @@ describe("render() — Status, Temperatur, Schwelle, Hysterese", () => {
     expect(out).toContain("🛡 Sicherheitsabschaltung bei 𝚫t 5 °C");
   });
 
-  it("zeigt während des Brauens die Schwelle aus dem Snapshot mit 𝚫t", () => {
+  it("zeigt während des Brauens die Schwelle aus dem Snapshot ohne 𝚫t", () => {
     const out = render(makeCard({ status: "running", safety_threshold: 72.5 }));
-    expect(out).toContain("𝚫t 72.5 °C");
+    expect(out).toContain("🛡 Sicherheitsabschaltung bei 72.5 °C");
+    expect(out).not.toContain("𝚫t");
     expect(out).toContain("läuft");
+  });
+
+  // 3.0.3: 𝚫t nur, wenn der angezeigte Wert der Offset (Differenz) ist.
+  it.each([
+    ["idle", null, 5, "°C", "🛡 Sicherheitsabschaltung bei 𝚫t 5 °C"],
+    ["done", null, 8, "°F", "🛡 Sicherheitsabschaltung bei 𝚫t 8 °F"],
+    ["running", 77, 10, "°C", "🛡 Sicherheitsabschaltung bei 77 °C"],
+    ["paused", 170, 10, "°F", "🛡 Sicherheitsabschaltung bei 170 °F"],
+  ])("Status %s: Schwelle %s, Offset %s %s → %s", (status, threshold, offset, unit, text) => {
+    const out = render(
+      makeCard({ status, safety_threshold: threshold, settings: { safety_offset: offset, unit } })
+    );
+    expect(out).toContain(text);
+    if (threshold !== null) expect(out).not.toContain("𝚫t");
+  });
+
+  it("zeigt die Schwelle auf Englisch ohne bzw. mit 𝚫t", () => {
+    const running = render(
+      makeCard({ status: "running", safety_threshold: 77, settings: { language: "en" } })
+    );
+    expect(running).toContain("🛡 Safety shutoff at 77 °C");
+    const done = render(
+      makeCard({ status: "done", safety_threshold: null, settings: { language: "en", safety_offset: 5 } })
+    );
+    expect(done).toContain("🛡 Safety shutoff at 𝚫t 5 °C");
   });
 
   it("zeigt '—', wenn weder Schwelle noch Offset vorliegen", () => {
@@ -338,7 +366,7 @@ describe("render() — Rezeptname, Buttons, Platzhalter", () => {
     const out = render(card);
     expect(out).toContain('class="error"');
     expect(out).toContain("3.0.0");
-    expect(out).toContain("3.0.1");
+    expect(out).toContain("3.0.3");
     // Gleiche Version → kein Hinweis.
     card._onSnapshot(makeSnapshot());
     expect(render(card)).not.toContain('class="error"');
@@ -877,11 +905,96 @@ describe("shouldUpdate — Snapshot zählt wie hass", () => {
     expect(card.shouldUpdate(new Map([["_editIndex", 0]]))).toBe(true);
   });
 
-  it("lässt Snapshot-Updates bei offenem Bibliotheks-Panel zu, hass-Updates nicht", () => {
+  it("lässt Snapshot-Updates bei offenem Bibliotheks-Panel zu, irrelevante hass-Updates nicht", () => {
     const card = makeCard();
     card._showLibrary = true;
     expect(card.shouldUpdate(new Map([["_snapshot", null]]))).toBe(true);
-    expect(card.shouldUpdate(new Map([["hass", null]]))).toBe(false);
+    // Neues hass, aber nur eine fremde Entität geändert → kein Re-Render.
+    const old = card.hass;
+    card.hass = withStates(old, { "light.kueche": { state: "on" } });
+    expect(card.shouldUpdate(new Map([["hass", old]]))).toBe(false);
+  });
+});
+
+/** Neues hass-Objekt wie von HA: neue `states`-Map, geänderte Einträge ersetzt. */
+function withStates(hass, changes) {
+  return { ...hass, states: { ...hass.states, ...changes } };
+}
+
+/** Simuliert ein hass-Update wie Lit: neues hass setzen, shouldUpdate befragen. */
+function pushHass(card, changes) {
+  const old = card.hass;
+  card.hass = withStates(old, changes);
+  return card.shouldUpdate(new Map([["hass", old]]));
+}
+
+describe("Bugfix 3.0.2 — Statusblock live bei offenem Panel", () => {
+  const heaterButton = (out) => out.match(/<button\s+class="heater-toggle[^"]*"[\s\S]*?<\/button>/)[0];
+
+  it("Rezepte verwalten: Heizung off→on→off rendert neu mit Klasse 'on' und 🔥", () => {
+    const card = makeCard();
+    card._showLibrary = true;
+    expect(heaterButton(render(card))).toContain('class="heater-toggle off"');
+
+    expect(pushHass(card, { "switch.brau_heizung": { state: "on" } })).toBe(true);
+    let btn = heaterButton(render(card));
+    expect(btn).toContain('class="heater-toggle on"');
+    expect(btn).toContain("🔥");
+    expect(btn).toContain("Heizung ausschalten");
+
+    expect(pushHass(card, { "switch.brau_heizung": { state: "off" } })).toBe(true);
+    btn = heaterButton(render(card));
+    expect(btn).toContain('class="heater-toggle off"');
+    expect(btn).not.toContain("🔥");
+    // Panel bleibt dabei offen.
+    expect(render(card)).toContain('id="library-name"');
+  });
+
+  it("Rezepte verwalten: Ist-Temperatur und Countdown-Tick rendern neu", () => {
+    const card = makeCard();
+    card._showLibrary = true;
+    expect(pushHass(card, { "sensor.brau_temp": { state: "66.5", attributes: {} } })).toBe(true);
+    expect(render(card)).toContain("66.5 °C");
+    // Entität der Integration (Sollwert) zählt ebenfalls.
+    expect(pushHass(card, { [SETPOINT_ENTITY]: { state: "67" } })).toBe(true);
+    // Countdown-Tick: requestUpdate() ohne Property → leere Map.
+    expect(card.shouldUpdate(new Map())).toBe(true);
+  });
+
+  it("Rezepte verwalten: getippter Name bleibt nach dem Re-Render erhalten", () => {
+    const card = makeCard();
+    card._showLibrary = true;
+    const before = card._renderLibrary(false);
+    const els = stubInputs(card, { "#library-name": "Helles Bock" });
+    expect(pushHass(card, { "switch.brau_heizung": { state: "on" } })).toBe(true);
+    render(card);
+    const after = card._renderLibrary(false);
+    // Gleiches Template → Lit verwendet dasselbe <input> weiter.
+    expect(after._strings).toBe(before._strings);
+    // Kein value-Binding am Namensfeld → Lit überschreibt getippten Text nicht.
+    const input = after._html.match(/<input\s+id="library-name"[^>]*>/)[0];
+    expect(input).not.toMatch(/value/);
+    expect(els["#library-name"].value).toBe("Helles Bock");
+  });
+
+  it("Einstellungen: Heizungs-Schalter rendert bei hass-Änderung neu (kein Fehler dort)", () => {
+    const card = makeCard();
+    card._showSettings = true;
+    expect(pushHass(card, { "switch.brau_heizung": { state: "on" } })).toBe(true);
+    const btn = heaterButton(render(card));
+    expect(btn).toContain('class="heater-toggle on"');
+    expect(btn).toContain("🔥");
+    expect(pushHass(card, { "switch.brau_heizung": { state: "off" } })).toBe(true);
+    expect(heaterButton(render(card))).toContain('class="heater-toggle off"');
+    // Eingabefelder binden an stabile Getter (unverändert → Lit schreibt nicht).
+    expect(render(card)).toContain(".value=switch.brau_heizung");
+  });
+
+  it("Inline-Bearbeitung: hass-Updates bleiben blockiert (Eingabefelder stabil)", () => {
+    const card = makeCard();
+    card._editIndex = 0;
+    expect(pushHass(card, { "switch.brau_heizung": { state: "on" } })).toBe(false);
+    expect(card.shouldUpdate(new Map())).toBe(false);
   });
 });
 
@@ -901,7 +1014,7 @@ describe("Editor und Registrierung", () => {
 
   it("registriert die Karte mit Version in window.customCards", () => {
     const entry = window.customCards.find((c) => c.type === "brausteuerung-card");
-    expect(entry.name).toContain("v3.0.1");
+    expect(entry.name).toContain("v3.0.3");
   });
 
   it("warnt, wenn brausteuerung-card beim Laden schon definiert ist", async () => {
@@ -927,7 +1040,7 @@ describe("Version und Quelltext (AK 6, AK 30)", () => {
       )
     );
     const pkg = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), "package.json"), "utf8"));
-    expect(match[1]).toBe("3.0.1");
+    expect(match[1]).toBe("3.0.3");
     expect(manifest.version).toBe(match[1]);
     expect(pkg.version).toBe(match[1]);
   });
@@ -943,10 +1056,10 @@ describe("Version und Quelltext (AK 6, AK 30)", () => {
   it("logicUrlFor übernimmt die ?v= der Karten-URL (AK 7)", () => {
     const { logicUrlFor } = cardModule;
     const logic = new URL(
-      logicUrlFor("http://ha.local:8123/brausteuerung_frontend/brausteuerung-card.js?v=3.0.1")
+      logicUrlFor("http://ha.local:8123/brausteuerung_frontend/brausteuerung-card.js?v=3.0.3")
     );
     expect(`${logic.pathname}${logic.search}`).toBe(
-      "/brausteuerung_frontend/brausteuerung-logic.js?v=3.0.1"
+      "/brausteuerung_frontend/brausteuerung-logic.js?v=3.0.3"
     );
     expect(logic.origin).toBe("http://ha.local:8123");
     // Ohne Query an der Karte auch keine Query am Logikmodul.

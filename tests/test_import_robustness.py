@@ -1,4 +1,4 @@
-"""Import-Robustheit (Bugfix 3.0.1).
+"""Import-Robustheit (Bugfix gegen fehlende Moduldateien, siehe CHANGELOG).
 
 v3.0.0 brach in HA mit "cannot import name 'validation' from partially initialized
 module … (circular import)" ab, weil im veröffentlichten Repository Dateien fehlten.

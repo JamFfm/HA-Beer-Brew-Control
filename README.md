@@ -106,7 +106,7 @@ Frontend ein.
 
 **Notlösung, nur falls die Karte nicht im Kartenpicker erscheint:** unter
 **Einstellungen → Dashboards → Ressourcen** die Ressource
-`/brausteuerung_frontend/brausteuerung-card.js?v=3.0.1` vom Typ
+`/brausteuerung_frontend/brausteuerung-card.js?v=3.0.3` vom Typ
 **JavaScript-Modul** eintragen.
 
 ---
@@ -267,7 +267,9 @@ Home-Assistant-Instanz gleich. Sie fasst bis zu 100 Rezepte.
 ### Einstellungen (⚙️)
 
 Über das **⚙️-Symbol** werden Temperatursensor, Heizungs-Aktor, Hysterese und
-Sicherheits-Offset (𝚫t) geändert. Diese Einstellungen dürfen nur
+Sicherheits-Offset (𝚫t) geändert (ohne laufenden Brauvorgang zeigt die Karte
+den Offset als 𝚫t, während des Brauvorgangs und in der Pause die konkrete
+Abschalttemperatur). Diese Einstellungen dürfen nur
 **Administratoren** ändern (siehe [Rechtemodell](#9-rechtemodell)); sie sind
 ebenso unter **Einstellungen → Geräte & Dienste → HA-Beer-Brew-Control → Konfigurieren**
 erreichbar. Sensor und Heizung lassen sich während eines laufenden Brauvorgangs
@@ -344,6 +346,10 @@ Beispiel: Solltemperatur 67 °C, 𝚫t 10 °C → Abschaltung bei 77 °C. Gülti
 `running` und `paused`), schaltet die Integration die Heizung sofort aus, setzt
 den Status auf `paused` und benachrichtigt einmal pro Ereignis. Die Fortsetzung
 erfordert eine bewusste Benutzeraktion.
+
+Ohne laufenden Brauvorgang (`idle`, `done`) zeigt die Karte den Offset als
+„Sicherheitsabschaltung bei 𝚫t …“, während des Brauvorgangs (und in der Pause)
+die konkrete Abschalttemperatur ohne 𝚫t.
 
 ### Was die Software tut (Fail-safe)
 
@@ -503,7 +509,7 @@ anschließend in HA-Beer-Brew-Control als Temperatursensor auswählen. Beispiele
 
 Updates kommen über HACS (**HACS → HA-Beer-Brew-Control → Aktualisieren**, danach
 Home Assistant neu starten). Ein manuelles Versionieren der Ressource entfällt:
-Die Integration bindet die Karte mit ihrer Version (`?v=3.0.1`) ein, der Browser
+Die Integration bindet die Karte mit ihrer Version (`?v=3.0.3`) ein, der Browser
 lädt nach einem Update automatisch die neue Datei. Passt die geladene Karte nicht
 zur Version der Integration, zeigt die Karte einen Hinweis; dann die Seite neu
 laden.
@@ -542,7 +548,7 @@ notwendig.
    mit Beschreibung und Topics anlegen; die
    Action `Validate` (HACS und hassfest) muss grün sein.
 2. Das Icon liegt unter `custom_components/brausteuerung/brand/icon.png`.
-3. Ein GitHub-**Release** (z. B. `v3.0.1`) erstellen. Vorher prüfen, dass der
+3. Ein GitHub-**Release** (z. B. `v3.0.3`) erstellen. Vorher prüfen, dass der
    Ordner `custom_components/brausteuerung/` auf GitHub vollständig ist (alle
    `*.py`-Dateien und `translations/`, aber kein `__pycache__/`).
 4. Pull Request im Repository `hacs/default` stellen (Datei `integration`).
@@ -550,6 +556,19 @@ notwendig.
 ---
 
 ## 16. CHANGELOG
+
+### 3.0.3
+
+- Anpassung: Die Zeile „Sicherheitsabschaltung bei …“ zeigt 𝚫t nur noch, wenn
+  der Sicherheits-Offset angezeigt wird (`idle`, `done`). Während des
+  Brauvorgangs und in der Pause erscheint die konkrete Abschalttemperatur ohne 𝚫t.
+
+### 3.0.2
+
+- Fix: Bei geöffnetem Panel „Rezepte verwalten“ aktualisierte der Statusblock
+  nicht (Heizungs-Schalter AN/AUS, Ist-Temperatur, Countdown). Er aktualisiert
+  jetzt live wie in der Hauptansicht; ein im Namensfeld getippter Text bleibt
+  erhalten.
 
 ### 3.0.1
 

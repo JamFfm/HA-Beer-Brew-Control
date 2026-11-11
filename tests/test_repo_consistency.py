@@ -168,7 +168,7 @@ def test_versions_match() -> None:
     package_version = _load(REPO / "package.json")["version"]
     match = re.search(r'const VERSION = "([^"]+)";', CARD.read_text(encoding="utf-8"))
     assert match is not None
-    assert manifest_version == package_version == match.group(1) == "3.0.1"
+    assert manifest_version == package_version == match.group(1) == "3.0.3"
 
 
 @pytest.mark.parametrize(

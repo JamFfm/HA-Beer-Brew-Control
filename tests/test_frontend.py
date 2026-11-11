@@ -18,7 +18,7 @@ from custom_components.brausteuerung.const import DATA_FRONTEND_REGISTERED
 
 CARD_URL = "/brausteuerung_frontend/brausteuerung-card.js"
 LOGIC_URL = "/brausteuerung_frontend/brausteuerung-logic.js"
-MODULE_URL = f"{CARD_URL}?v=3.0.1"
+MODULE_URL = f"{CARD_URL}?v=3.0.3"
 
 
 @pytest.fixture
@@ -35,8 +35,8 @@ async def test_card_and_logic_are_served(
     client = await hass_client()
     resp = await client.get(CARD_URL)
     assert resp.status == 200
-    assert 'const VERSION = "3.0.1"' in await resp.text()
-    resp = await client.get(f"{CARD_URL}?v=3.0.1")
+    assert 'const VERSION = "3.0.3"' in await resp.text()
+    resp = await client.get(f"{CARD_URL}?v=3.0.3")
     assert resp.status == 200
     resp = await client.get(LOGIC_URL)
     assert resp.status == 200

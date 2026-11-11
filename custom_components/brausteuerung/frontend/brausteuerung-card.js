@@ -2,7 +2,7 @@
  * brausteuerung-card.js
  *
  * Custom Lovelace Card der Brausteuerung (LitElement-basiert), ausgeliefert von
- * der Integration `brausteuerung` (v3.0.1).
+ * der Integration `brausteuerung` (v3.0.3).
  *
  * Die Karte ist ein dünner Client: Regelung, Sicherheitsfunktionen, Rezept und
  * Bibliothek laufen serverseitig in der Python-Integration. Die Karte
@@ -24,7 +24,7 @@
 // Der Cache-Buster ist die Query `?v=<Manifest-Version>`, mit der die
 // Integration die Karte per `add_extra_js_url` einbindet; das Logikmodul wird
 // mit genau derselben Query nachgeladen (keine handgepflegte Version im Import).
-const VERSION = "3.0.1";
+const VERSION = "3.0.3";
 
 /**
  * URL des Logikmoduls zur (absoluten) URL der Karte: gleiches Verzeichnis,
@@ -796,14 +796,23 @@ class BrausteuerungCard extends LitElement {
   }
 
   /**
-   * Wert der Sicherheitsabschaltung zur Anzeige (Req 9.3, A6): während eines
-   * Brauvorgangs die Schwelle aus dem Snapshot, sonst der eingestellte
-   * Sicherheits-Offset (Anzeige als Differenz „𝚫t").
-   * @returns {number} Anzeigewert oder `NaN`, wenn keiner vorliegt.
+   * Wert der Sicherheitsabschaltung zur Anzeige (Req 9.3, A6) samt Quelle.
+   *
+   * Maßgeblich ist die Quelle des Werts, nicht direkt der Status: Liefert der
+   * Snapshot eine Schwelle (Soll + Offset), ist das eine konkrete
+   * Abschalttemperatur → Anzeige ohne „𝚫t". Das gilt in `running` und auch in
+   * `paused`, denn der Sollwert bleibt in der Pause erhalten und die Schwelle
+   * des aktiven Sollwerts gilt weiter. Ohne Sollwert (`idle`, `done`) ist die
+   * Schwelle `null`; dann wird der eingestellte Sicherheits-Offset angezeigt,
+   * also eine Differenz → Anzeige mit „𝚫t".
+   * @returns {{value: number, isDelta: boolean}} Anzeigewert (`NaN`, wenn
+   *   keiner vorliegt) und ob er eine Differenz (Offset) ist.
    */
-  get _safetyThreshold() {
-    const value = this._snapshot?.safety_threshold ?? this._settings.safety_offset;
-    return typeof value === "number" ? value : NaN;
+  get _safetyDisplay() {
+    const threshold = this._snapshot?.safety_threshold;
+    const isDelta = threshold === null || threshold === undefined;
+    const value = isDelta ? this._settings.safety_offset : threshold;
+    return { value: typeof value === "number" ? value : NaN, isDelta };
   }
 
   /**
@@ -869,17 +878,30 @@ class BrausteuerungCard extends LitElement {
   // Render-Stabilität (Req 7.1, 7.2)
   // =========================================================================
   shouldUpdate(changedProps) {
-    // Ist das Bibliotheks-Panel offen, sollen reine hass-Updates die aktive
-    // Namenseingabe nicht zerstören; Änderungen an Panel-Status/Snapshot/
-    // Fehlermeldung lösen jedoch ein Re-Render aus (Req 7, Req 12). Der
-    // Snapshot ersetzt hier die frühere Bibliothek und den Rezeptnamen.
+    // Ist das Bibliotheks-Panel offen, lösen Änderungen an Panel-Status/
+    // Snapshot/Fehlermeldung ein Re-Render aus (Req 7, Req 12). Der Snapshot
+    // ersetzt hier die frühere Bibliothek und den Rezeptnamen.
+    //
+    // hass-Updates werden NICHT pauschal blockiert, sonst friert der
+    // Statusblock ein (Heizungs-Schalter, Ist-Temperatur — Bugfix 3.0.2).
+    // Die Namenseingabe #library-name ist ein unkontrolliertes <input> ohne
+    // gebundenes `value`: Lit verwendet beim Re-Render dasselbe Element weiter
+    // und schreibt nur geänderte Bindings (hier nur `placeholder`) — getippter
+    // Text, Fokus und Cursor bleiben erhalten. Gezielt statt bei jedem
+    // hass-Update: HA liefert für jede beliebige Entität ein neues `hass`;
+    // gerendert wird nur, wenn sich ein angezeigter Zustand geändert hat
+    // (Heizungs-Aktor, Sensor, Entitäten der Integration). Ein expliziter
+    // `requestUpdate()` ohne Property (Countdown-Tick) wird ebenfalls
+    // zugelassen, damit die Haltezeit auch bei offenem Panel weiterläuft.
     if (this._showLibrary) {
       return (
+        changedProps.size === 0 ||
         changedProps.has("_showLibrary") ||
         changedProps.has("_snapshot") ||
         changedProps.has("_localRecipe") ||
         changedProps.has("_showSettings") ||
-        changedProps.has("_editIndex")
+        changedProps.has("_editIndex") ||
+        (changedProps.has("hass") && this._displayStatesChanged(changedProps.get("hass")))
       );
     }
     // Geänderte Anzeigedauer soll den Verlauf neu aufbauen — außer es wird
@@ -900,6 +922,34 @@ class BrausteuerungCard extends LitElement {
       );
     }
     return true;
+  }
+
+  /**
+   * Entity-IDs, deren HA-Zustand die Anzeige der Karte bestimmt: Heizungs-
+   * Aktor, Temperatur-Sensor und die Entitäten der Integration (Snapshot).
+   * @returns {string[]} Entity-IDs (ohne leere Einträge).
+   */
+  get _displayEntityIds() {
+    const entities = this._snapshot?.entities;
+    const own = entities && typeof entities === "object" ? Object.values(entities) : [];
+    return [this._configuredHeater, this._configuredSensor, ...own].filter(
+      (id) => typeof id === "string" && id !== ""
+    );
+  }
+
+  /**
+   * Prüft, ob sich gegenüber dem vorherigen `hass` der Zustand einer
+   * angezeigten Entität geändert hat (Bugfix 3.0.2). HA ersetzt bei jeder
+   * Änderung das State-Objekt der betroffenen Entität, ein Referenzvergleich
+   * genügt daher.
+   * @param {Object|undefined} oldHass Vorheriges `hass`.
+   * @returns {boolean} `true`, wenn neu gerendert werden soll.
+   */
+  _displayStatesChanged(oldHass) {
+    if (!oldHass || !this.hass) return true;
+    const oldStates = oldHass.states ?? {};
+    const newStates = this.hass.states ?? {};
+    return this._displayEntityIds.some((id) => oldStates[id] !== newStates[id]);
   }
 
   // =========================================================================
@@ -1891,7 +1941,7 @@ class BrausteuerungCard extends LitElement {
    */
   _renderStatusBlock() {
     const status = this._status;
-    const threshold = this._safetyThreshold;
+    const { value: threshold, isDelta } = this._safetyDisplay;
 
     let tempContent;
     if (!this._configuredSensor) {
@@ -1924,7 +1974,10 @@ class BrausteuerungCard extends LitElement {
       </div>
       <div class="status-threshold">
         ${Number.isFinite(threshold)
-          ? this._t("safety_shutoff", { v: threshold, unit: this._unit })
+          ? this._t(isDelta ? "safety_shutoff_delta" : "safety_shutoff", {
+              v: threshold,
+              unit: this._unit,
+            })
           : this._t("safety_shutoff_none")}
       </div>
       <div class="status-threshold">
@@ -2275,9 +2328,9 @@ class BrausteuerungCard extends LitElement {
    *
    * Es werden bewusst `<input list=...>`-Felder mit `<datalist>` verwendet,
    * damit die Auswahlliste sich bei Auswahl nicht schließt und Eingaben nicht
-   * verworfen werden. Die Felder lösen KEIN `requestUpdate` aus; `shouldUpdate`
-   * unterdrückt zudem Re-Renders durch reine `hass`-Änderungen, solange das
-   * Panel offen ist — die aktiven Eingabefelder bleiben dadurch erhalten.
+   * verworfen werden. Die Felder lösen KEIN `requestUpdate` aus; Re-Renders
+   * durch `hass`-Änderungen sind zugelassen (Heizungs-Schalter bleibt live) —
+   * die `.value`-Bindings an stabile Getter überschreiben getippten Text nicht.
    *
    * @returns {import("lit").TemplateResult}
    */

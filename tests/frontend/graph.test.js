@@ -255,8 +255,11 @@ describe('i18n — resolveLanguage / translate (Req 14)', () => {
   });
 
   it('ersetzt Platzhalter über vars', () => {
-    expect(translate('en', 'safety_shutoff', { v: 77, unit: '°C' })).toBe('🛡 Safety shutoff at 𝚫t 77 °C');
-    expect(translate('en', 'safety_shutoff', { v: 170, unit: '°F' })).toBe('🛡 Safety shutoff at 𝚫t 170 °F');
+    expect(translate('en', 'safety_shutoff', { v: 77, unit: '°C' })).toBe('🛡 Safety shutoff at 77 °C');
+    expect(translate('en', 'safety_shutoff', { v: 170, unit: '°F' })).toBe('🛡 Safety shutoff at 170 °F');
+    expect(translate('de', 'safety_shutoff', { v: 77, unit: '°C' })).toBe('🛡 Sicherheitsabschaltung bei 77 °C');
+    expect(translate('en', 'safety_shutoff_delta', { v: 10, unit: '°C' })).toBe('🛡 Safety shutoff at 𝚫t 10 °C');
+    expect(translate('de', 'safety_shutoff_delta', { v: 18, unit: '°F' })).toBe('🛡 Sicherheitsabschaltung bei 𝚫t 18 °F');
     expect(translate('de', 'rests_count', { n: 3 })).toBe('3 Rasten');
     expect(translate('en', 'overwrite_confirm', { name: 'IPA' })).toBe(
       'Recipe "IPA" already exists. Overwrite?'
