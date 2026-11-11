@@ -1,0 +1,440 @@
+# =============================================================================
+# Brausteuerung Automationen
+# =============================================================================
+# Diese Einträge in deine automations.yaml einfügen. Die Datei ist eine
+# YAML-Liste von Automationen — weitere Automationen (manueller Wechsel,
+# Übertemperaturschutz, Kommunikationsverlust) werden als zusätzliche
+# Listeneinträge angehängt.
+#
+# Die Automationen kommunizieren ausschließlich über die HA-Helfer
+# (Single Source of Truth, siehe design.md "Data Models"):
+#   input_text.brau_rezept_json      Rezept als JSON-Array
+#   input_text.brau_sensor_entity    Entity-ID des Temperatursensors
+#   input_text.brau_heater_entity    Entity-ID des Heizungs-Aktors
+#   input_select.brau_status         idle / running / paused / done
+#   input_number.brau_aktuelle_stufe Index der aktiven Raststufe
+#   input_number.brau_solltemperatur aktive Solltemperatur (°C)
+#   timer.brau_raststufe             Haltezeit-Timer
+#
+# Die Ziel-Entitäten für Sensor und Heizung sind dynamisch (als String in
+# input_text gespeichert) und werden in den Service-Aufrufen über Templates
+# aufgelöst.
+# =============================================================================
+
+# --- Automation 1: Raststufe steuern (Req 1.2, 4.1-4.5, 8.4) ---
+# Heizt auf die Solltemperatur der aktuellen Raststufe auf, hält sie per
+# Hysterese (konfigurierbares Band aus input_number.brau_hysterese, Default
+# 1,0 °C) während der Haltezeit, wechselt danach zur nächsten
+# Raststufe und schließt nach der letzten Rast ab.
+- id: brausteuerung_raststufe
+  alias: "Brausteuerung - Raststufe"
+  description: >
+    Aufheizen auf Solltemperatur, Halten per Hysterese (konfigurierbares Band,
+    Default 1,0 °C) für die
+    Haltezeit der aktuellen Raststufe, danach Stufenwechsel bzw. Abschluss.
+  mode: restart
+
+  trigger:
+    # Start des Brauprozesses (Card setzt Status auf running)
+    - platform: state
+      entity_id: input_select.brau_status
+      to: "running"
+    # Erneutes Triggern durch die Card oder durch diese Automation selbst
+    # (Stufenwechsel) via automation.trigger
+    - platform: event
+      event_type: call_service
+      event_data:
+        domain: automation
+        service: trigger
+
+  condition:
+    # Nur regeln, solange der Prozess wirklich läuft
+    - condition: state
+      entity_id: input_select.brau_status
+      state: "running"
+
+  action:
+    - variables:
+        rezept: "{{ states('input_text.brau_rezept_json') | from_json(default=[]) }}"
+        stufe_index: "{{ states('input_number.brau_aktuelle_stufe') | int(0) }}"
+        sensor_entity: "{{ states('input_text.brau_sensor_entity') }}"
+        heater_entity: "{{ states('input_text.brau_heater_entity') }}"
+
+    - choose:
+        # ---------------------------------------------------------------
+        # Letzte Rast abgeschlossen / Index außerhalb des Rezepts (Req 4.5)
+        # Heizung aus, Status "done", Benachrichtigung.
+        # ---------------------------------------------------------------
+        - conditions:
+            - condition: template
+              value_template: "{{ (rezept | length) == 0 or stufe_index >= (rezept | length) }}"
+          sequence:
+            - service: switch.turn_off
+              target:
+                entity_id: "{{ heater_entity }}"
+            - service: input_select.select_option
+              target:
+                entity_id: input_select.brau_status
+              data:
+                option: "done"
+            - service: persistent_notification.create
+              data:
+                title: >-
+                  {% if states('input_select.brau_language') == 'de' %}🍺 Brauprozess abgeschlossen!{% else %}🍺 Brewing complete!{% endif %}
+                message: >-
+                  {% if states('input_select.brau_language') == 'de' %}Alle Raststufen wurden erfolgreich durchlaufen.{% else %}All rests have been completed successfully.{% endif %}
+            - stop: "Brauprozess abgeschlossen"
+
+      # -----------------------------------------------------------------
+      # Aktive Raststufe abarbeiten
+      # -----------------------------------------------------------------
+      default:
+        - variables:
+            soll_temp: "{{ rezept[stufe_index].t | float(0) }}"
+            haltezeit_min: "{{ rezept[stufe_index].d | int(0) }}"
+
+        # Solltemperatur der aktiven Rast übernehmen (Req 4-Datenfluss)
+        - service: input_number.set_value
+          target:
+            entity_id: input_number.brau_solltemperatur
+          data:
+            value: "{{ soll_temp }}"
+
+        # --- Aufheizphase (Req 1.2, 4.1): Heizung an, bis Soll erreicht ---
+        - repeat:
+            while:
+              - condition: state
+                entity_id: input_select.brau_status
+                state: "running"
+              - condition: template
+                value_template: "{{ states(sensor_entity) | float(0) < soll_temp }}"
+            sequence:
+              - service: switch.turn_on
+                target:
+                  entity_id: "{{ heater_entity }}"
+              - delay:
+                  seconds: 5
+
+        # --- Haltezeit starten (Req 4.2) ---
+        # Nur starten, wenn der Prozess weiterhin läuft (Aufheizen kann durch
+        # Stop/Übertemperatur abgebrochen worden sein).
+        - condition: state
+          entity_id: input_select.brau_status
+          state: "running"
+
+        - service: timer.start
+          target:
+            entity_id: timer.brau_raststufe
+          data:
+            duration: "{{ '%02d:%02d:00' | format(haltezeit_min // 60, haltezeit_min % 60) }}"
+
+        # --- Haltephase (Req 4.3, 4.9): Hysterese mit konfigurierbarem Band ---
+        # Band = input_number.brau_hysterese (Default 1,0 °C bei ungültig/fehlend)
+        # ist < soll - hyst -> Heizung AN
+        # ist >= soll       -> Heizung AUS
+        # sonst (im Band)   -> Zustand unverändert
+        - repeat:
+            while:
+              - condition: state
+                entity_id: timer.brau_raststufe
+                state: "active"
+              - condition: state
+                entity_id: input_select.brau_status
+                state: "running"
+            sequence:
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: >-
+                          {% set hyst = states('input_number.brau_hysterese') | float(1.0) %}
+                          {% set hyst = hyst if (hyst > 0 and hyst <= 5) else 1.0 %}
+                          {{ states(sensor_entity) | float(0) < (soll_temp - hyst) }}
+                    sequence:
+                      - service: switch.turn_on
+                        target:
+                          entity_id: "{{ heater_entity }}"
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ states(sensor_entity) | float(0) >= soll_temp }}"
+                    sequence:
+                      - service: switch.turn_off
+                        target:
+                          entity_id: "{{ heater_entity }}"
+                # Im Band (soll-hyst <= ist < soll): keine Aktion -> Zustand bleibt
+              - delay:
+                  seconds: 5
+
+        # --- Stufenwechsel (Req 4.4) ---
+        # Nur fortfahren, wenn der Timer regulär abgelaufen ist und der Prozess
+        # noch läuft (nicht durch Stop/Übertemperatur unterbrochen).
+        - condition: state
+          entity_id: input_select.brau_status
+          state: "running"
+        - condition: state
+          entity_id: timer.brau_raststufe
+          state: "idle"
+
+        - service: input_number.set_value
+          target:
+            entity_id: input_number.brau_aktuelle_stufe
+          data:
+            value: "{{ stufe_index + 1 }}"
+
+        # Diese Automation erneut anstoßen -> verarbeitet die nächste Stufe
+        # bzw. schließt ab, wenn keine weitere Rast vorhanden ist (mode: restart).
+        - service: automation.trigger
+          target:
+            entity_id: automation.brausteuerung_raststufe
+
+
+# --- Automation 2: Notaus / Stopp (Req 8.4) ---
+# Wird ausgelöst, sobald der Status den Zustand "running" verlässt (Stop durch
+# Benutzer, Übertemperatur -> paused, Abschluss -> done). Schaltet die Heizung
+# aus und bricht den laufenden Raststufen-Timer ab.
+- id: brausteuerung_notaus
+  alias: "Brausteuerung - Notaus"
+  description: "Heizung aus und Timer abbrechen, sobald der Prozess running verlässt."
+  mode: single
+
+  trigger:
+    - platform: state
+      entity_id: input_select.brau_status
+      from: "running"
+
+  action:
+    - service: switch.turn_off
+      target:
+        entity_id: "{{ states('input_text.brau_heater_entity') }}"
+    - service: timer.cancel
+      target:
+        entity_id: timer.brau_raststufe
+
+# --- Automation 3: Manueller Stufenwechsel (Req 8.6, 8.7) ---
+# Wird ausschließlich von der Card über automation.trigger ausgelöst. Bricht den
+# laufenden Haltezeit-Timer ab und springt zur nächsten Raststufe. Ist die
+# aktuelle Rast die letzte, wird die Heizung ausgeschaltet, der Status auf "done"
+# gesetzt und eine Benachrichtigung erzeugt (Req 8.7).
+- id: brausteuerung_manueller_wechsel
+  alias: "Brausteuerung - Manueller Stufenwechsel"
+  description: >
+    Ausgelöst durch den Card-Button (input_button.brau_naechste_rast): wechselt
+    manuell zur nächsten Raststufe — in der Haltephase durch Beenden des Timers,
+    in der Aufheizphase durch Erhöhen der Stufe. Auf der letzten Rast wird
+    abgeschlossen (Req 8.6, 8.7).
+  mode: single
+
+  # Wird vom Card-Button ausgelöst (input_button.press). Bewusst KEIN
+  # automation.trigger durch die Card, damit der breite call_service-Trigger der
+  # Raststufen-Automation nicht mitfeuert und die laufende Rast neu startet.
+  trigger:
+    - platform: state
+      entity_id: input_button.brau_naechste_rast
+
+  condition:
+    # Nur während eines laufenden Brauprozesses wechseln.
+    - condition: state
+      entity_id: input_select.brau_status
+      state: "running"
+
+  action:
+    - choose:
+        # ---------------------------------------------------------------
+        # Haltephase: Der Haltezeit-Timer läuft. Timer beenden -> die
+        # Raststufen-Automation verlässt ihre Halteschleife und wechselt bzw.
+        # schließt selbst ab (wie beim regulären Ablauf der Haltezeit). So wird
+        # die Stufe nur EINMAL erhöht (kein Doppelwechsel).
+        # ---------------------------------------------------------------
+        - conditions:
+            - condition: state
+              entity_id: timer.brau_raststufe
+              state: "active"
+          sequence:
+            - service: timer.finish
+              target:
+                entity_id: timer.brau_raststufe
+
+      # -----------------------------------------------------------------
+      # Aufheizphase: kein aktiver Timer. Zur nächsten Rast wechseln bzw. bei
+      # der letzten Rast abschließen und die Raststufen-Automation neu anstoßen
+      # (Req 8.6, 8.7).
+      # -----------------------------------------------------------------
+      default:
+        - variables:
+            rezept: "{{ states('input_text.brau_rezept_json') | from_json(default=[]) }}"
+            stufe_index: "{{ states('input_number.brau_aktuelle_stufe') | int(0) }}"
+            heater_entity: "{{ states('input_text.brau_heater_entity') }}"
+        - choose:
+            # Letzte Rast: Heizung aus, Status "done", Benachrichtigung (Req 8.7).
+            - conditions:
+                - condition: template
+                  value_template: "{{ (stufe_index + 1) >= (rezept | length) }}"
+              sequence:
+                - service: switch.turn_off
+                  target:
+                    entity_id: "{{ heater_entity }}"
+                - service: input_select.select_option
+                  target:
+                    entity_id: input_select.brau_status
+                  data:
+                    option: "done"
+                - service: persistent_notification.create
+                  data:
+                    title: >-
+                      {% if states('input_select.brau_language') == 'de' %}🍺 Brauprozess abgeschlossen!{% else %}🍺 Brewing complete!{% endif %}
+                    message: >-
+                      {% if states('input_select.brau_language') == 'de' %}Manueller Wechsel auf der letzten Raststufe — Brauprozess abgeschlossen.{% else %}Manual advance on the last rest — brewing complete.{% endif %}
+          # Sonst: zur nächsten Rast wechseln und Raststufen-Automation anstoßen.
+          default:
+            - service: input_number.set_value
+              target:
+                entity_id: input_number.brau_aktuelle_stufe
+              data:
+                value: "{{ stufe_index + 1 }}"
+            - service: automation.trigger
+              target:
+                entity_id: automation.brausteuerung_raststufe
+
+# --- Automation 4: Übertemperaturschutz (Req 9.1, 9.2) ---
+# Parallele Sicherheits-Automation: Reagiert auf Änderungen des konfigurierten
+# Temperatursensors und vergleicht die Ist-Temperatur mit dem Schwellwert
+# (Solltemperatur + Sicherheits-Offset). Da die Sensor-Entität dynamisch in
+# input_text.brau_sensor_entity hinterlegt ist, kann kein statischer
+# state-Trigger an sie gebunden werden. Stattdessen re-evaluiert ein
+# template-Trigger fortlaufend den aufgelösten Sensorwert.
+#
+# Wird nur während eines laufenden Prozesses (status == running) aktiv. Bei
+# Überschreitung: Heizung aus, Status -> paused (beendet die while-Schleifen
+# der Regel-Automation), persistent_notification mit Messwert und Schwellwert.
+#
+# Hinweis: float(-999) als Default verhindert ein Fehlauslösen bei ungültigem/
+# fehlendem Sensorwert (ein zu kleiner Wert überschreitet den Schwellwert nie).
+# Der Kommunikationsverlust wird separat in Automation 5 behandelt.
+- id: brausteuerung_uebertemperatur
+  alias: "Brausteuerung - Übertemperaturschutz"
+  description: >
+    Schaltet bei Übertemperatur (ist > soll + offset) die Heizung aus, setzt den
+    Status auf paused und erzeugt eine Benachrichtigung. Nur während running aktiv.
+  mode: single
+
+  trigger:
+    # Re-evaluiert den dynamisch konfigurierten Sensor gegen soll + offset.
+    # Offset-Fallback: gültiger Bereich 0..20 °C, sonst Default 10 °C (Req 9.5),
+    # damit der Schutz auch bei (noch) ungültigem Helferwert sinnvoll greift.
+    - platform: template
+      value_template: >-
+        {% set offset = states('input_number.brau_sicherheits_offset') | float(10) %}
+        {% set offset = offset if (offset >= 0 and offset <= 20) else 10 %}
+        {{ states(states('input_text.brau_sensor_entity')) | float(-999)
+           > (states('input_number.brau_solltemperatur') | float(0) + offset) }}
+
+  condition:
+    # Übertemperaturschutz nur während eines aktiv laufenden Prozesses greifen.
+    - condition: state
+      entity_id: input_select.brau_status
+      state: "running"
+
+  action:
+    - variables:
+        sensor_entity: "{{ states('input_text.brau_sensor_entity') }}"
+        heater_entity: "{{ states('input_text.brau_heater_entity') }}"
+        ist_temp: "{{ states(states('input_text.brau_sensor_entity')) | float(-999) }}"
+        schwelle: >-
+          {% set offset = states('input_number.brau_sicherheits_offset') | float(10) %}
+          {% set offset = offset if (offset >= 0 and offset <= 20) else 10 %}
+          {{ (states('input_number.brau_solltemperatur') | float(0) + offset) | round(1) }}
+        einheit: >-
+          {% set u = states('input_select.brau_unit') %}
+          {{ u if u in ['°C', '°F'] else '°C' }}
+
+    # --- Heizung sofort ausschalten (Req 9.1) ---
+    - service: switch.turn_off
+      target:
+        entity_id: "{{ heater_entity }}"
+
+    # --- Brauprozess anhalten (Req 9.2) ---
+    # paused beendet die while-Schleifen der Regel-Automation (state == running).
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.brau_status
+      data:
+        option: "paused"
+
+    # --- Benachrichtigung mit Messwert und Schwellwert (Req 9.2) ---
+    - service: persistent_notification.create
+      data:
+        title: >-
+          {% if states('input_select.brau_language') == 'de' %}🔥 Übertemperatur erkannt!{% else %}🔥 Over-temperature detected!{% endif %}
+        message: >-
+          {% if states('input_select.brau_language') == 'de' %}Die Ist-Temperatur ({{ ist_temp | round(1) }} {{ einheit }}) hat den
+          Sicherheitsschwellwert ({{ schwelle }} {{ einheit }} = Soll + Offset)
+          überschritten. Die Heizung wurde ausgeschaltet und der Brauprozess
+          angehalten (paused). Bitte Anlage prüfen, bevor fortgesetzt wird.{% else %}The actual temperature ({{ ist_temp | round(1) }} {{ einheit }}) has exceeded the
+          safety threshold ({{ schwelle }} {{ einheit }} = setpoint + offset). The heater
+          was switched off and the brewing process was paused. Please check the
+          system before continuing.{% endif %}
+
+# --- Automation 5: Kommunikationsverlust (Req 10.1, 10.2) ---
+# Parallele Sicherheits-Automation: Geht der Kontakt zur konfigurierten
+# Temperatursensor-Entität verloren (State 'unavailable'/'unknown'), darf nicht
+# weiter ungeregelt geheizt werden. Da die Sensor-Entität dynamisch in
+# input_text.brau_sensor_entity hinterlegt ist, kann kein statischer
+# state-Trigger an sie gebunden werden. Stattdessen wird der aufgelöste
+# Sensor-State per template-Trigger ausgewertet.
+#
+# Die Auslösung erfolgt erst, wenn der Verlust für die definierte Dauer
+# (KOMM_VERLUST_DAUER) ununterbrochen anliegt — kurze Aussetzer lösen also
+# nicht aus. Wirkt nur während eines laufenden Prozesses (status == running).
+# Bei Auslösung: Heizung aus + Benachrichtigung.
+#
+# KOMM_VERLUST_DAUER = 30 s (Default, hier zentral dokumentiert)
+# Dieser Wert ist auch in der Installationsanleitung (README.md) beschrieben.
+# Soll die Toleranzdauer angepasst werden, ist ausschließlich der unten im
+# Trigger stehende for-Wert (seconds) zu ändern.
+- id: brausteuerung_komm_verlust
+  alias: "Brausteuerung - Kommunikationsverlust"
+  description: >
+    Schaltet die Heizung aus und benachrichtigt, wenn der Temperatursensor
+    während eines laufenden Prozesses für KOMM_VERLUST_DAUER (Default 30 s)
+    unavailable/unknown ist. Nur während running aktiv.
+  mode: single
+
+  trigger:
+    # Wird true, sobald der aufgelöste Sensor-State 'unavailable' oder 'unknown'
+    # meldet und dies für die definierte Dauer (KOMM_VERLUST_DAUER) anhält.
+    - platform: template
+      value_template: >-
+        {{ states(states('input_text.brau_sensor_entity')) in ['unavailable', 'unknown'] }}
+      for:
+        # KOMM_VERLUST_DAUER = 30 s (Default)
+        seconds: 30
+
+  condition:
+    # Kommunikationsverlust-Reaktion nur während eines aktiv laufenden Prozesses
+    # (Req 10.1 — nur bei laufendem Brauprozess).
+    - condition: state
+      entity_id: input_select.brau_status
+      state: "running"
+
+  action:
+    - variables:
+        sensor_entity: "{{ states('input_text.brau_sensor_entity') }}"
+        heater_entity: "{{ states('input_text.brau_heater_entity') }}"
+
+    # --- Heizung sofort ausschalten (Req 10.1) ---
+    - service: switch.turn_off
+      target:
+        entity_id: "{{ heater_entity }}"
+
+    # --- Benachrichtigung über den Kommunikationsverlust (Req 10.2) ---
+    - service: persistent_notification.create
+      data:
+        title: >-
+          {% if states('input_select.brau_language') == 'de' %}📡 Kommunikationsverlust zum Temperatursensor!{% else %}📡 Communication loss with temperature sensor!{% endif %}
+        message: >-
+          {% if states('input_select.brau_language') == 'de' %}Der Temperatursensor ({{ sensor_entity }}) war für mind. 30 s nicht
+          erreichbar (unavailable/unknown). Die Heizung wurde aus Sicherheits-
+          gründen ausgeschaltet. Bitte Sensor und Verbindung prüfen, bevor der
+          Brauprozess fortgesetzt wird.{% else %}The temperature sensor ({{ sensor_entity }}) was unreachable for at
+          least 30 s (unavailable/unknown). The heater was switched off for
+          safety reasons. Please check the sensor and connection before
+          continuing the brewing process.{% endif %}

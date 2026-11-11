@@ -1,0 +1,158 @@
+# =============================================================================
+# Brausteuerung — Home Assistant Konfiguration (Helfer)
+# =============================================================================
+# Diese Einträge in deine bestehende configuration.yaml einfügen.
+# Wenn du bereits input_text-, input_select-, input_number- oder timer-Abschnitte
+# hast, füge die jeweiligen Einträge dort hinzu (Domänenschlüssel nicht doppeln).
+#
+# Die Helfer sind die alleinige Schnittstelle zwischen Custom Card und
+# Automationen (Single Source of Truth, siehe design.md "Data Models").
+#
+# -----------------------------------------------------------------------------
+# WICHTIG — Persistenz über Neustarts und Updates hinweg
+# -----------------------------------------------------------------------------
+# Home Assistant stellt den letzten Zustand eines Helfers beim Neustart nur dann
+# wieder her, wenn KEIN `initial:` gesetzt ist (restore_state-Mechanismus). Ist
+# `initial:` gesetzt, wird der Helfer bei JEDEM Neustart — und damit auch nach
+# einem HA- oder HA-OS-Update — auf diesen Initialwert ZURÜCKGESETZT.
+#
+# Deshalb sind die Helfer hier bewusst in zwei Gruppen geteilt:
+#
+#   1) Benutzerdaten / Konfiguration  → OHNE `initial:`  → bleiben erhalten:
+#        brau_rezept_json, brau_rezept_name, brau_sensor_entity,
+#        brau_heater_entity, brau_sicherheits_offset, brau_hysterese
+#
+#   2) Prozess-/Laufzeitzustand       → MIT `initial:`   → Reset auf sicheren
+#      Ruhezustand bei jedem Neustart (kein automatisches Fortsetzen eines
+#      laufenden Brauvorgangs nach Neustart/Update):
+#        brau_status (idle), brau_aktuelle_stufe (0), brau_solltemperatur (0),
+#        timer.brau_raststufe
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# input_text — Rezept-JSON und konfigurierte Entitäten (max. 255 Zeichen)
+# Persistent: KEIN `initial:`, damit Rezept und Entitätsauswahl Neustarts und
+# Updates überdauern (restore_state).
+# -----------------------------------------------------------------------------
+input_text:
+  brau_rezept_json:
+    name: Brau Rezept JSON
+    max: 255
+
+  # OPTIONAL — Name des aktiven Rezepts (Req 16). Wird in der Kopfzeile der Card
+  # fett und mittig angezeigt; ohne Wert zeigt die Card „Neues Rezept". Die Card
+  # funktioniert auch ohne diesen Helfer (dann liegt der Name im
+  # HA-Benutzerspeicher); mit dem Helfer ist der Name zusätzlich in HA selbst
+  # verfügbar (z. B. für eigene Automationen). Kein `initial:`, damit der Name
+  # Neustarts/Updates überdauert (restore_state).
+  brau_rezept_name:
+    name: Brau Rezept Name
+    max: 255
+
+  brau_sensor_entity:
+    name: Brau Sensor Entity
+    max: 255
+
+  brau_heater_entity:
+    name: Brau Heater Entity
+    max: 255
+
+# -----------------------------------------------------------------------------
+# input_select — Betriebszustand der Brausteuerung
+# Laufzeitzustand: `initial: idle`, damit nach einem Neustart/Update KEIN
+# laufender Brauvorgang automatisch fortgesetzt wird (Sicherheit).
+# -----------------------------------------------------------------------------
+input_select:
+  brau_status:
+    name: Brau Status
+    options:
+      - idle
+      - running
+      - paused
+      - done
+    initial: idle
+
+  # Sprache der Card-Oberfläche und der Steuerungs-Benachrichtigungen (Req 14).
+  # Default Englisch; jederzeit über den Umschalter der Card wechselbar. Kein
+  # `initial:`, damit die zuletzt gewählte Sprache Neustarts/Updates überdauert
+  # (restore_state). Beim allerersten Anlegen ist der Startwert die erste Option
+  # (en), also Englisch.
+  brau_language:
+    name: Brau Language
+    options:
+      - en
+      - de
+
+  # Temperatureinheit für die Beschriftungen (Req 15). REINE Anzeige — es findet
+  # KEINE Umrechnung der Werte statt. Default °C (erste Option). Kein `initial:`,
+  # damit die Auswahl Neustarts/Updates überdauert (restore_state).
+  brau_unit:
+    name: Brau Temperature Unit
+    options:
+      - "°C"
+      - "°F"
+
+# -----------------------------------------------------------------------------
+# input_number — aktive Stufe, Solltemperatur, Sicherheits-Offset, Hysterese
+# -----------------------------------------------------------------------------
+input_number:
+  # Laufzeitzustand: Reset auf 0 bei Neustart (kein Fortsetzen).
+  brau_aktuelle_stufe:
+    name: Aktuelle Raststufe
+    min: 0
+    max: 20
+    step: 1
+    initial: 0
+    mode: box
+
+  # Laufzeitzustand: Reset auf 0 bei Neustart (kein Fortsetzen).
+  brau_solltemperatur:
+    name: Brau Solltemperatur
+    min: 0
+    max: 100
+    step: 0.5
+    initial: 0
+    unit_of_measurement: "°C"
+    mode: box
+
+  # Konfiguration: KEIN `initial:`, damit der eingestellte Offset erhalten
+  # bleibt. Default beim allerersten Anlegen: min (0 °C); bitte nach der
+  # Installation einmalig auf den gewünschten Wert (z. B. 10 °C) setzen.
+  brau_sicherheits_offset:
+    name: Brau Sicherheits-Offset
+    min: 0
+    max: 20
+    step: 0.5
+    unit_of_measurement: "°C"
+    mode: box
+
+  # Konfiguration: KEIN `initial:`, damit das eingestellte Hystereseband
+  # erhalten bleibt. Default beim allerersten Anlegen: min (0,1 °C); die Card
+  # fällt bei fehlendem/ungültigem Wert auf 1,0 °C zurück.
+  brau_hysterese:
+    name: Brau Hysterese
+    min: 0.1
+    max: 5
+    step: 0.1
+    unit_of_measurement: "°C"
+    mode: box
+
+# -----------------------------------------------------------------------------
+# timer — Haltezeit-Timer der aktiven Raststufe
+# Laufzeitzustand: wird bei Neustart ohnehin nicht aktiv fortgesetzt.
+# -----------------------------------------------------------------------------
+timer:
+  brau_raststufe:
+    name: Rast-Timer
+    duration: "00:00:00"
+
+# -----------------------------------------------------------------------------
+# input_button — „Nächste Rast"-Taster
+# Die Card „drückt" diesen Button (input_button.press), um manuell zur nächsten
+# Raststufe zu wechseln. Bewusst ein input_button (statuslos) statt eines
+# automation.trigger aus der Card, damit der breite call_service-Trigger der
+# Raststufen-Automation nicht mitfeuert. Kein `initial:` nötig (statuslos).
+# -----------------------------------------------------------------------------
+input_button:
+  brau_naechste_rast:
+    name: Brau Nächste Rast
