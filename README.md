@@ -1,5 +1,7 @@
 # 🍺 HA-Beer-Brew-Control
 
+[![In Home Assistant öffnen und das Repository in HACS hinzufügen](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=JamFfm&repository=HA-Beer-Brew-Control&category=integration)
+
 ## 1. Kurzbeschreibung
 
 HA-Beer-Brew-Control ist eine Sudhaus-/Maischesteuerung (Brausteuerung) für Hobbybrauer.
@@ -72,6 +74,12 @@ werden nicht mehr benötigt.
 Voraussetzungen: Home Assistant **2026.6** oder neuer (getestet mit 2026.10.4),
 [HACS](https://hacs.xyz/) installiert, eine Temperatursensor-Entität (`sensor.*`)
 und ein Heizungs-Aktor (`switch.*`).
+
+Schneller geht es über den Button oben bzw. diesen Link: Er öffnet HACS in deiner
+eigenen Home-Assistant-Instanz (ab HA 2026.11 den Marketplace) und bietet das
+Hinzufügen als benutzerdefiniertes Repository an; danach weiter ab Schritt 3.
+
+[![In Home Assistant öffnen und das Repository in HACS hinzufügen](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=JamFfm&repository=HA-Beer-Brew-Control&category=integration)
 
 1. **HACS** öffnen → Menü **⋮** → **Benutzerdefinierte Repositories**.
 2. Repository `https://github.com/JamFfm/HA-Beer-Brew-Control`

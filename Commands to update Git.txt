@@ -1,0 +1,27 @@
+cd ~/Downloads/Kiro/HA-Beer-Brew-Control
+git checkout main
+git pull
+
+rsync -a --delete \
+  --exclude .git \
+  --exclude .venv --exclude node_modules --exclude .agents \
+  --exclude __pycache__ --exclude .pytest_cache --exclude .ruff_cache \
+  --exclude .hypothesis --exclude .coverage --exclude .DS_Store \
+  ../homeassistant-brausteuerung/ ./
+
+# Version muss der im manifest.json entsprechen
+grep '"version"' custom_components/brausteuerung/manifest.json
+
+# Die Dateizahlen im Projekt und im Git-Ordner müssen gleich sein
+find ../homeassistant-brausteuerung/custom_components -type f -not -path '*__pycache__*' -not -name .DS_Store | wc -l
+find custom_components -type f | wc -l
+
+# Darf keine Ausgabe liefern (kein __pycache__ oder .venv im Repository)
+git status --short | grep -E "__pycache__|\.venv|node_modules"
+
+# Übersicht der Änderungen
+git status --short
+
+git add -A
+git commit -m "Anzeige 𝚫t nur bei Offset, Version 3.0.3"
+git push

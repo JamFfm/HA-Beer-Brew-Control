@@ -13,7 +13,9 @@ permissions:
 jobs:
   hacs:
     name: HACS-Validierung
-    runs-on: ubuntu-latest
+    # Fest auf Ubuntu 24.04: ubuntu-latest wechselt im Nov. 2026 auf 26.04;
+    # die HACS-/hassfest-Actions sind dort noch nicht erprobt.
+    runs-on: ubuntu-24.04
     steps:
       - uses: hacs/action@main
         with:
@@ -21,7 +23,9 @@ jobs:
 
   hassfest:
     name: hassfest-Validierung
-    runs-on: ubuntu-latest
+    # Fest auf Ubuntu 24.04: ubuntu-latest wechselt im Nov. 2026 auf 26.04;
+    # die HACS-/hassfest-Actions sind dort noch nicht erprobt.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: home-assistant/actions/hassfest@master
