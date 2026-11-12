@@ -105,7 +105,7 @@ afterEach(() => {
 function makeSnapshot(overrides = {}) {
   const { settings, ...rest } = overrides;
   return {
-    version: "3.0.3",
+    version: "3.0.4",
     loaded: true,
     status: "idle",
     phase: null,
@@ -366,7 +366,7 @@ describe("render() — Rezeptname, Buttons, Platzhalter", () => {
     const out = render(card);
     expect(out).toContain('class="error"');
     expect(out).toContain("3.0.0");
-    expect(out).toContain("3.0.3");
+    expect(out).toContain("3.0.4");
     // Gleiche Version → kein Hinweis.
     card._onSnapshot(makeSnapshot());
     expect(render(card)).not.toContain('class="error"');
@@ -1014,7 +1014,7 @@ describe("Editor und Registrierung", () => {
 
   it("registriert die Karte mit Version in window.customCards", () => {
     const entry = window.customCards.find((c) => c.type === "brausteuerung-card");
-    expect(entry.name).toContain("v3.0.3");
+    expect(entry.name).toContain("v3.0.4");
   });
 
   it("warnt, wenn brausteuerung-card beim Laden schon definiert ist", async () => {
@@ -1040,7 +1040,7 @@ describe("Version und Quelltext (AK 6, AK 30)", () => {
       )
     );
     const pkg = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), "package.json"), "utf8"));
-    expect(match[1]).toBe("3.0.3");
+    expect(match[1]).toBe("3.0.4");
     expect(manifest.version).toBe(match[1]);
     expect(pkg.version).toBe(match[1]);
   });
@@ -1056,10 +1056,10 @@ describe("Version und Quelltext (AK 6, AK 30)", () => {
   it("logicUrlFor übernimmt die ?v= der Karten-URL (AK 7)", () => {
     const { logicUrlFor } = cardModule;
     const logic = new URL(
-      logicUrlFor("http://ha.local:8123/brausteuerung_frontend/brausteuerung-card.js?v=3.0.3")
+      logicUrlFor("http://ha.local:8123/brausteuerung_frontend/brausteuerung-card.js?v=3.0.4")
     );
     expect(`${logic.pathname}${logic.search}`).toBe(
-      "/brausteuerung_frontend/brausteuerung-logic.js?v=3.0.3"
+      "/brausteuerung_frontend/brausteuerung-logic.js?v=3.0.4"
     );
     expect(logic.origin).toBe("http://ha.local:8123");
     // Ohne Query an der Karte auch keine Query am Logikmodul.

@@ -64,7 +64,7 @@ async def test_unique_ids_and_device(
     assert device.name == "HA-Beer-Brew-Control"
     assert device.manufacturer == "HA-Beer-Brew-Control"
     assert device.model == "Maischesteuerung"
-    assert device.sw_version == "3.0.3"
+    assert device.sw_version == "3.0.4"
     assert device.entry_type is DeviceEntryType.SERVICE
     for platform, keys in ENTITIES.items():
         for key in keys:

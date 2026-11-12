@@ -134,6 +134,8 @@ def test_manifest_fields() -> None:
     assert manifest["documentation"] == REPO_URL
     assert manifest["issue_tracker"] == f"{REPO_URL}/issues"
     assert manifest["requirements"] == []
+    # HACS/Marketplace: Kategorie laut HA-Kategorienliste ("Cooking").
+    assert manifest["categories"] == ["appliances_cleaning.cooking"]
     # hassfest: domain, name, danach alphabetisch.
     keys = list(manifest)
     assert keys[:2] == ["domain", "name"]
@@ -168,7 +170,7 @@ def test_versions_match() -> None:
     package_version = _load(REPO / "package.json")["version"]
     match = re.search(r'const VERSION = "([^"]+)";', CARD.read_text(encoding="utf-8"))
     assert match is not None
-    assert manifest_version == package_version == match.group(1) == "3.0.3"
+    assert manifest_version == package_version == match.group(1) == "3.0.4"
 
 
 @pytest.mark.parametrize(

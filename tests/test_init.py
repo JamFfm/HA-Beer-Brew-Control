@@ -77,7 +77,7 @@ async def test_snapshot_contents(hass: HomeAssistant, setup_integration, fake_sw
     entry = await setup_integration(stored=STORED)
     snap = controller_of(entry).snapshot()
     assert snap["loaded"] is True
-    assert snap["version"] == "3.0.3"
+    assert snap["version"] == "3.0.4"
     assert snap["status"] == STATUS_IDLE
     assert snap["recipe_name"] == "Helles"
     assert snap["recipe"] == TWO_RESTS

@@ -114,7 +114,7 @@ Frontend ein.
 
 **Notlösung, nur falls die Karte nicht im Kartenpicker erscheint:** unter
 **Einstellungen → Dashboards → Ressourcen** die Ressource
-`/brausteuerung_frontend/brausteuerung-card.js?v=3.0.3` vom Typ
+`/brausteuerung_frontend/brausteuerung-card.js?v=3.0.4` vom Typ
 **JavaScript-Modul** eintragen.
 
 ---
@@ -517,7 +517,7 @@ anschließend in HA-Beer-Brew-Control als Temperatursensor auswählen. Beispiele
 
 Updates kommen über HACS (**HACS → HA-Beer-Brew-Control → Aktualisieren**, danach
 Home Assistant neu starten). Ein manuelles Versionieren der Ressource entfällt:
-Die Integration bindet die Karte mit ihrer Version (`?v=3.0.3`) ein, der Browser
+Die Integration bindet die Karte mit ihrer Version (`?v=3.0.4`) ein, der Browser
 lädt nach einem Update automatisch die neue Datei. Passt die geladene Karte nicht
 zur Version der Integration, zeigt die Karte einen Hinweis; dann die Seite neu
 laden.
@@ -556,7 +556,7 @@ notwendig.
    mit Beschreibung und Topics anlegen; die
    Action `Validate` (HACS und hassfest) muss grün sein.
 2. Das Icon liegt unter `custom_components/brausteuerung/brand/icon.png`.
-3. Ein GitHub-**Release** (z. B. `v3.0.3`) erstellen. Vorher prüfen, dass der
+3. Ein GitHub-**Release** (z. B. `v3.0.4`) erstellen. Vorher prüfen, dass der
    Ordner `custom_components/brausteuerung/` auf GitHub vollständig ist (alle
    `*.py`-Dateien und `translations/`, aber kein `__pycache__/`).
 4. Pull Request im Repository `hacs/default` stellen (Datei `integration`).
@@ -564,6 +564,11 @@ notwendig.
 ---
 
 ## 16. CHANGELOG
+
+### 3.0.4
+
+- Manifest: Kategorie `appliances_cleaning.cooking` („Appliances & cleaning →
+  Cooking“) für HACS und den Marketplace ergänzt. Keine Funktionsänderung.
 
 ### 3.0.3
 
