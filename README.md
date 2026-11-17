@@ -1,477 +1,474 @@
 # 🍺 HA-Beer-Brew-Control
 
-[![In Home Assistant öffnen und das Repository in HACS hinzufügen](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=JamFfm&repository=HA-Beer-Brew-Control&category=integration)
+🇬🇧 **English** · 🇩🇪 [Deutsch](README.de.md)
 
-## 1. Kurzbeschreibung
+[![Open your Home Assistant instance and add this repository to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=JamFfm&repository=HA-Beer-Brew-Control&category=integration)
 
-HA-Beer-Brew-Control ist eine Sudhaus-/Maischesteuerung (Brausteuerung) für Hobbybrauer.
-Ab Version 3.0.0 ist sie eine **Home-Assistant-Integration in Python**, die über **HACS**
-installiert wird. Die bekannte Lovelace-Karte bleibt erhalten und wird von der
-Integration selbst ausgeliefert.
+## 1. Overview
 
-Jede Raststufe besteht aus einem Namen, einer Solltemperatur und einer Haltezeit.
-Die Integration liest die Ist-Temperatur aus einer Temperatursensor-Entität,
-regelt einen Heizungs-Aktor (Schalter) per Hysterese auf die Solltemperatur und
-wechselt nach Ablauf der Haltezeit automatisch zur nächsten Raststufe. Regelung
-und Sicherheitsfunktionen laufen vollständig im Home-Assistant-Server, nicht im
-Browser. Helfer und Automationen aus `configuration.yaml`/`automations.yaml`
-werden nicht mehr benötigt.
+HA-Beer-Brew-Control is a brewhouse/mash controller (brew control) for homebrewers.
+Since version 3.0.0 it is a **Home Assistant integration written in Python** that is
+installed via **HACS**. The familiar Lovelace card is kept and is served by the
+integration itself.
+
+Each rest consists of a name, a target temperature and a hold time. The
+integration reads the actual temperature from a temperature sensor entity,
+controls a heater actuator (switch) towards the target temperature using
+hysteresis and automatically moves on to the next rest once the hold time has
+elapsed. Control and safety functions run entirely on the Home Assistant server,
+not in the browser. Helpers and automations from
+`configuration.yaml`/`automations.yaml` are no longer needed.
 
 <table>
   <tr>
-    <td rowspan="2"><img src="pics/BrausteuerungCard.png" alt="Die HA-Beer-Brew-Control-Karte in Home Assistant" width="400" /></td>
-    <td><img src="pics/Settings.png" alt="Einstellungen" width="400" /></td>
+    <td rowspan="2"><img src="pics/BrausteuerungCard.png" alt="The HA-Beer-Brew-Control card in Home Assistant" width="400" /></td>
+    <td><img src="pics/Settings.png" alt="Settings" width="400" /></td>
   </tr>
   <tr>
-    <td style="background-color:#ffffff"><img src="pics/Manage%20Recipes.png" alt="Rezepte verwalten" width="400" /></td>
+    <td style="background-color:#ffffff"><img src="pics/Manage%20Recipes.png" alt="Manage recipes" width="400" /></td>
   </tr>
 </table>
 
-<img src="pics/BrausteuerungCard1.png" alt="Die HA-Beer-Brew-Control-Karte während eines Brauvorgangs" width="400" />
+<img src="pics/BrausteuerungCard1.png" alt="The HA-Beer-Brew-Control card during a brew" width="400" />
 
-*So sieht die in Home Assistant eingebundene HA-Beer-Brew-Control-Karte aus.*
+*This is what the HA-Beer-Brew-Control card looks like in Home Assistant.*
 
 ---
 
-## 2. ⚠️ Sicherheit zuerst
+## 2. ⚠️ Safety first
 
-> **Diese Software ersetzt keinen unabhängigen Hardware-Schutz.**
+> **This software does not replace independent hardware protection.**
 >
-> - Ein vom System **unabhängiger** Übertemperaturschutz (z. B. ein mechanischer
->   Temperaturbegrenzer / STB) ist **Pflicht**.
-> - Der Heizungs-Aktor **muss** bei einem Ausfall von Home Assistant physisch
->   abschalten (stromlos = Heizung aus).
-> - Betreibe die Anlage **nie unbeaufsichtigt**.
-> - Beim Umstieg von v2.x **müssen** die 5 alten Automationen und alle 13 Helfer
->   entfernt werden. Zwei Regler dürfen nie dieselbe Heizung schalten
->   (siehe [Migration von v2.x](#6-migration-von-v2x)).
+> - An over-temperature protection that is **independent** of the system (e.g. a
+>   mechanical temperature limiter / safety temperature limiter, STB) is
+>   **mandatory**.
+> - The heater actuator **must** physically switch off if Home Assistant fails
+>   (de-energised = heater off).
+> - **Never** operate the system **unattended**.
+> - When upgrading from v2.x, the 5 old automations and all 13 helpers **must**
+>   be removed. Two controllers must never switch the same heater
+>   (see [Migration from v2.x](#6-migration-from-v2x)).
 >
-> Details: [Regelung & Sicherheitskonzept](#10-regelung--sicherheitskonzept).
+> Details: [Control & safety concept](#10-control--safety-concept).
 
 ---
 
-## 3. Funktionsüberblick
+## 3. Features
 
-- Rezepte mit bis zu 30 Raststufen (Name, Solltemperatur 0–100 °C, Haltezeit
-  1–1440 min), Bearbeiten, Löschen und Umsortieren vor dem Start.
-- Automatischer Ablauf: Aufheizen, Halten per Hysterese, nächste Rast, Abschluss
-  mit Benachrichtigung. Manueller Sprung über „⏭ Nächste Rast“.
-- Rezept-Bibliothek (bis zu 100 Rezepte), instanzweit für alle Benutzer.
-- Übertemperaturschutz (𝚫t-Offset über der Solltemperatur), Schutz bei
-  Kommunikationsverlust, Watchdogs für veraltete Sensorwerte und hängende Aktoren.
-- Sichere Grundstellung: Heizung AUS beim Start, Entladen, Neustart und Stop von
-  Home Assistant; kein automatisches Weiterbrauen nach einem Neustart.
-- Entitäten (Sensoren, Buttons, Auswahlen, Zahlen) und Services für eigene
-  Automationen und Dashboards.
-- Oberfläche auf Englisch und Deutsch, Anzeige in °C oder °F.
-- Temperaturverlauf über die native `history-graph`-Karte.
-- Keine zusätzlichen Python-Pakete, kein Cloud- oder Netzwerkzugriff.
+- Recipes with up to 30 rests (name, target temperature 0–100 °C, hold time
+  1–1440 min); edit, delete and reorder before starting.
+- Automatic sequence: heating up, holding via hysteresis, next rest, completion
+  with a notification. Manual skip via “⏭ Next rest”.
+- Recipe library (up to 100 recipes), shared by all users of the instance.
+- Over-temperature protection (𝚫t offset above the target temperature),
+  protection against communication loss, watchdogs for stale sensor values and
+  stuck actuators.
+- Safe default state: heater OFF on setup, unload, restart and stop of Home
+  Assistant; brewing never resumes automatically after a restart.
+- Entities (sensors, buttons, selects, numbers) and services for your own
+  automations and dashboards.
+- User interface in English and German, display in °C or °F.
+- Temperature history via the native `history-graph` card.
+- No additional Python packages, no cloud or network access.
 
 ---
 
-## 4. Installation über HACS
+## 4. Installation via HACS
 
-Voraussetzungen: Home Assistant **2026.6** oder neuer (getestet mit 2026.10.4),
-[HACS](https://hacs.xyz/) installiert, eine Temperatursensor-Entität (`sensor.*`)
-und ein Heizungs-Aktor (`switch.*`).
+Requirements: Home Assistant **2026.6** or newer (tested with 2026.10.4),
+[HACS](https://hacs.xyz/) installed, a temperature sensor entity (`sensor.*`)
+and a heater actuator (`switch.*`).
 
-Schneller geht es über den Button oben bzw. diesen Link: Er öffnet HACS in deiner
-eigenen Home-Assistant-Instanz (ab HA 2026.11 den Marketplace) und bietet das
-Hinzufügen als benutzerdefiniertes Repository an; danach weiter ab Schritt 3.
+The quickest way is the button above or this link: it opens HACS in your own
+Home Assistant instance (from HA 2026.11 the Marketplace) and offers to add the
+repository as a custom repository; then continue with step 3.
 
-[![In Home Assistant öffnen und das Repository in HACS hinzufügen](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=JamFfm&repository=HA-Beer-Brew-Control&category=integration)
+[![Open your Home Assistant instance and add this repository to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=JamFfm&repository=HA-Beer-Brew-Control&category=integration)
 
-1. **HACS** öffnen → Menü **⋮** → **Benutzerdefinierte Repositories**.
-2. Repository `https://github.com/JamFfm/HA-Beer-Brew-Control`
-   eintragen, Kategorie **Integration**, **Hinzufügen**.
-3. In HACS nach **HA-Beer-Brew-Control** suchen → **Herunterladen**.
-4. **Home Assistant neu starten.**
-5. **Einstellungen → Geräte & Dienste → Integration hinzufügen → HA-Beer-Brew-Control**.
-   Temperatursensor, Heizungs-Aktor, Hysterese, Sicherheits-Offset, Sprache und
-   Einheit wählen.
-6. Dashboard bearbeiten → **Karte hinzufügen** → **HA-Beer-Brew-Control** (bzw. manuell
+1. Open **HACS** → menu **⋮** → **Custom repositories**.
+2. Enter the repository `https://github.com/JamFfm/HA-Beer-Brew-Control`,
+   category **Integration**, **Add**.
+3. Search HACS for **HA-Beer-Brew-Control** → **Download**.
+4. **Restart Home Assistant.**
+5. **Settings → Devices & services → Add integration → HA-Beer-Brew-Control**.
+   Choose the temperature sensor, heater actuator, hysteresis, safety offset,
+   language and unit.
+6. Edit the dashboard → **Add card** → **HA-Beer-Brew-Control** (or manually
    `type: custom:brausteuerung-card`).
 
-Eine Dashboard-Ressource muss **nicht** angelegt werden: Die Integration liefert
-die Karte unter `/brausteuerung_frontend/` aus und bindet sie automatisch ins
-Frontend ein.
+You do **not** need to add a dashboard resource: the integration serves the card
+under `/brausteuerung_frontend/` and registers it in the frontend automatically.
 
-> **Hinweis Marketplace:** Ab Home Assistant 2026.11 ist HACS auch über den
-> Home-Assistant-Marketplace erreichbar. Sobald HA-Beer-Brew-Control im
-> HACS-Default-Store aufgenommen ist (siehe
-> [Veröffentlichung](#15-veröffentlichung-im-hacs-default-store)), entfällt
-> Schritt 1–2; sie lässt sich dann direkt über die Suche finden.
-
----
-
-## 5. Manuelle Installation
-
-1. Den Ordner `custom_components/brausteuerung` aus diesem Repository nach
-   `<config>/custom_components/brausteuerung` kopieren (inklusive `frontend/`,
-   `translations/` und `brand/`).
-2. Home Assistant neu starten.
-3. Weiter wie bei HACS ab Schritt 5.
-
-**Notlösung, nur falls die Karte nicht im Kartenpicker erscheint:** unter
-**Einstellungen → Dashboards → Ressourcen** die Ressource
-`/brausteuerung_frontend/brausteuerung-card.js?v=3.0.4` vom Typ
-**JavaScript-Modul** eintragen.
+> **Marketplace note:** From Home Assistant 2026.11, HACS is also available via
+> the Home Assistant Marketplace. Once HA-Beer-Brew-Control has been accepted
+> into the HACS default store (see
+> [Publishing](#15-publishing-in-the-hacs-default-store)), steps 1–2 are no
+> longer needed; it can then be found directly via the search.
 
 ---
 
-## 6. Migration von v2.x
+## 5. Manual installation
 
-Die Integration übernimmt die bisherigen Einstellungen, das aktive Rezept und die
-Rezept-Bibliothek. Die Schritte **in genau dieser Reihenfolge** ausführen:
+1. Copy the folder `custom_components/brausteuerung` from this repository to
+   `<config>/custom_components/brausteuerung` (including `frontend/`,
+   `translations/` and `brand/`).
+2. Restart Home Assistant.
+3. Continue as with HACS from step 5.
 
-1. Integration über HACS herunterladen (Abschnitt 4, Schritte 1–3), **noch nicht
-   neu starten**.
-2. **Vor dem Neustart** die alte Dashboard-Ressource `/local/brausteuerung-card.js`
-   entfernen (**Einstellungen → Dashboards → Ressourcen**). Sonst kann die alte
-   Karte das Element `brausteuerung-card` zuerst belegen.
-3. Home Assistant neu starten.
-4. **Integration hinzufügen** (Abschnitt 4, Schritt 5). Der Dialog ist mit den
-   Werten der alten Helfer vorbelegt; das aktive Rezept und sein Name werden
-   einmalig übernommen.
-5. Die Karte **einmal als Administrator** öffnen. Sie übernimmt dabei die
-   Rezept-Bibliothek aus dem Benutzerspeicher in die Integration (vorhandene Namen
-   werden nicht überschrieben). Die alten Daten bleiben als Sicherung erhalten.
-6. **Die 5 Automationen und alle 13 Helfer MÜSSEN entfernt werden**, ebenso die
-   Dateien `www/brausteuerung-card.js` und `www/brausteuerung-logic.js`:
-   - Automationen: `brausteuerung_raststufe`, `brausteuerung_notaus`,
+**Fallback, only if the card does not appear in the card picker:** under
+**Settings → Dashboards → Resources** add the resource
+`/brausteuerung_frontend/brausteuerung-card.js?v=3.0.4` of type
+**JavaScript module**.
+
+---
+
+## 6. Migration from v2.x
+
+The integration takes over the previous settings, the active recipe and the
+recipe library. Perform the steps **in exactly this order**:
+
+1. Download the integration via HACS (section 4, steps 1–3), **do not restart
+   yet**.
+2. **Before restarting**, remove the old dashboard resource
+   `/local/brausteuerung-card.js` (**Settings → Dashboards → Resources**).
+   Otherwise the old card may claim the `brausteuerung-card` element first.
+3. Restart Home Assistant.
+4. **Add the integration** (section 4, step 5). The dialog is pre-filled with
+   the values of the old helpers; the active recipe and its name are taken over
+   once.
+5. Open the card **once as an administrator**. It then moves the recipe library
+   from the user storage into the integration (existing names are not
+   overwritten). The old data is kept as a backup.
+6. **The 5 automations and all 13 helpers MUST be removed**, as well as the
+   files `www/brausteuerung-card.js` and `www/brausteuerung-logic.js`:
+   - Automations: `brausteuerung_raststufe`, `brausteuerung_notaus`,
      `brausteuerung_manueller_wechsel`, `brausteuerung_uebertemperatur`,
      `brausteuerung_komm_verlust`.
-   - Helfer: alle `input_text.brau_*`, `input_number.brau_*`,
-     `input_select.brau_*`, `timer.brau_raststufe` und
-     `input_button.brau_naechste_rast` aus der `configuration.yaml`.
-   - Danach Home Assistant neu starten und den Browser neu laden.
+   - Helpers: all `input_text.brau_*`, `input_number.brau_*`,
+     `input_select.brau_*`, `timer.brau_raststufe` and
+     `input_button.brau_naechste_rast` from `configuration.yaml`.
+   - Then restart Home Assistant and reload the browser.
 
-Hinweise:
+Notes:
 
-- Solange Altlasten vorhanden sind, zeigt **Einstellungen → System → Reparaturen**
-  passende Meldungen (alte Automationen, alte Helfer, alte Ressource).
-- **Start-Sperre:** Ist noch eine alte Automation eingeschaltet, verweigert die
-  Integration den Start eines Brauvorgangs (`legacy_automations_active`).
-  Erkannt werden nur die 5 alten Automationen (über ihre `id` aus
-  `automations.yaml` bzw. ihre ursprüngliche Entity-ID). Eigene Automationen,
-  die die neue Integration bedienen, sperren den Start nicht, auch wenn ihr Name
-  mit „Brausteuerung“ beginnt.
-- Bibliotheken von Benutzern **ohne** Admin-Rechte werden nicht automatisch
-  übernommen.
-- Der Ordner `legacy/` enthält die alten YAML-Dateien nur zur Referenz für v2.x.
-  Für v3 werden sie **nicht** benötigt.
+- As long as leftovers exist, **Settings → System → Repairs** shows matching
+  issues (old automations, old helpers, old resource).
+- **Start lock:** If an old automation is still enabled, the integration refuses
+  to start a brew (`legacy_automations_active`). Only the 5 old automations are
+  detected (by their `id` from `automations.yaml` or their original entity ID).
+  Your own automations that operate the new integration do not block the start,
+  even if their name begins with “Brausteuerung”.
+- Libraries of users **without** admin rights are not migrated automatically.
+- The `legacy/` folder contains the old YAML files for v2.x reference only.
+  They are **not** needed for v3.
 
 ---
 
-## 7. Bedienung
+## 7. Usage
 
-### Sprache umschalten (EN/DE)
+### Switching the language (EN/DE)
 
-In der Kopfzeile der Karte befindet sich ein **Sprachumschalter** (`EN`/`DE`).
-Damit lässt sich die Oberfläche jederzeit zwischen **Englisch** (Standard) und
-**Deutsch** wechseln. Die Wahl wird in der Integration gespeichert
-(Entität `select.brausteuerung_language`) und gilt auch für die
-**Benachrichtigungstexte** (z. B. Übertemperatur, Kommunikationsverlust,
-Brauende). Fehlt der Wert oder ist er ungültig, wird Englisch verwendet.
+The card header contains a **language switch** (`EN`/`DE`). It lets you switch
+the user interface between **English** (default) and **German** at any time.
+The choice is stored in the integration (entity `select.brausteuerung_language`)
+and also applies to the **notification texts** (e.g. over-temperature,
+communication loss, end of brew). If the value is missing or invalid, English is
+used.
 
-### Name des aktiven Rezepts
+### Active recipe name
 
-In der Kopfzeile der Karte steht **oben in der Mitte fett** der Name des aktuell
-aktiven Rezepts. Gespeichert wird er in der Integration (wie die
-Rezept-Bibliothek) und steht damit allen Benutzern gleich zur Verfügung.
+The name of the currently active recipe is shown **in bold at the top centre**
+of the card header. It is stored in the integration (like the recipe library)
+and is therefore the same for all users.
 
-- **Kein Rezept ausgewählt:** Es erscheint der Platzhalter **„Neues Rezept"**
-  (englisch: „New recipe").
-- **Rezept geladen oder gespeichert:** Beim **📥 Laden** aus der Bibliothek und
-  beim **💾 Speichern** übernimmt die Karte den jeweiligen Rezeptnamen.
-- **Rezept verändert:** Wird ein benanntes Rezept angepasst (Rast hinzugefügt,
-  gelöscht, bearbeitet oder umsortiert), hängt die Integration beim **ersten**
-  Eingriff ein **„Neu"** an den Namen, z. B. `Helles` → `Helles Neu`. Alle
-  **weiteren** Änderungen lassen den Namen unverändert — der Name wird also nicht
-  bei jeder Änderung erneut ergänzt.
-- **Namenskollision:** Existiert der Name mit „Neu" bereits in der Bibliothek,
-  wird eine Zahl hochgezählt: `Helles Neu 2`, `Helles Neu 3`, …
+- **No recipe selected:** the placeholder **“New recipe”** is shown
+  (German: “Neues Rezept”).
+- **Recipe loaded or saved:** when using **📥 Load** from the library and
+  **💾 Save**, the card takes over the respective recipe name.
+- **Recipe modified:** if a named recipe is changed (rest added, deleted,
+  edited or reordered), the integration appends **“New”** to the name on the
+  **first** change, e.g. `Pale Ale` → `Pale Ale New`. All **further** changes
+  leave the name unchanged — the name is not extended again on every change.
+- **Name collision:** if the name with “New” already exists in the library, a
+  number is counted up: `Pale Ale New 2`, `Pale Ale New 3`, …
 
-Erkannt wird die erste Änderung über den Abgleich mit der Rezept-Bibliothek: Nur
-solange das aktive Rezept namentlich **und** inhaltlich dem gespeicherten
-Bibliothekseintrag entspricht, gilt es als unverändert. Das Verhalten bleibt
-dadurch auch nach einem Neuladen der Seite korrekt. Ein Rezept ohne Namen
-(Platzhalter „Neues Rezept") erhält kein „Neu"-Suffix — vergib beim
-**💾 Speichern** einfach einen Namen. Eine Bearbeitung mit unveränderten Werten
-benennt das Rezept nicht um.
+The first change is detected by comparing with the recipe library: the active
+recipe only counts as unchanged as long as it matches the stored library entry
+by name **and** content. This keeps the behaviour correct even after reloading
+the page. A recipe without a name (placeholder “New recipe”) does not get a
+“New” suffix — simply enter a name when using **💾 Save**. Editing with
+unchanged values does not rename the recipe.
 
-### Rezept / Raststufen anlegen
+### Creating a recipe / rests
 
-Gib für jede Raststufe Folgendes ein:
+Enter the following for each rest:
 
-- **Name** — optional. Bleibt das Feld leer, vergibt die Integration automatisch
-  den Standardnamen `Rast N` (mit `N` = Position der Rast).
-- **Solltemperatur** — gültig sind Werte von **0 °C bis 100 °C**.
-- **Haltezeit** — gültig sind **ganze Minuten größer als 0** (höchstens 1440).
+- **Name** — optional. If the field is left empty, the integration automatically
+  assigns the default name `Rast N` (with `N` = position of the rest).
+- **Target temperature** — valid values are **0 °C to 100 °C**.
+- **Hold time** — valid values are **whole minutes greater than 0** (at most
+  1440).
 
-Ungültige Eingaben (Solltemperatur außerhalb 0–100 °C, Haltezeit ≤ 0 oder keine
-ganze Zahl) werden **nicht** übernommen; das Rezept bleibt unverändert.
+Invalid input (target temperature outside 0–100 °C, hold time ≤ 0 or not a whole
+number) is **not** accepted; the recipe remains unchanged.
 
-Raststufen können vor dem Start über **✎** editiert und über **✕** gelöscht werden.
-Über die Pfeiltasten **▲ / ▼** lässt sich die Reihenfolge der Rasten vor dem Start
-beliebig ändern; die neue Reihenfolge wird sofort gespeichert. Abgearbeitet werden
-die Rasten in genau der Reihenfolge, die beim Drücken von **▶ Start** vorliegt.
-Während eines laufenden Prozesses sind Editieren, Löschen und Umsortieren gesperrt.
+Before starting, rests can be edited via **✎** and deleted via **✕**. The arrow
+buttons **▲ / ▼** let you change the order of the rests freely before starting;
+the new order is saved immediately. The rests are processed in exactly the order
+present when **▶ Start** is pressed. While a process is running, editing,
+deleting and reordering are locked.
 
-Ein Rezept kann bis zu **30 Rasten** enthalten; Namen dürfen bis zu
-**64 Zeichen** lang sein. Die frühere 255-Zeichen-Grenze gibt es nicht mehr.
+A recipe can contain up to **30 rests**; names can be up to **64 characters**
+long. The former 255-character limit no longer exists.
 
-### Brauprozess steuern
+### Controlling the brewing process
 
-- **▶ Start** — startet mit der ersten Raststufe und setzt den Status auf `running`.
-  Start ist nur verfügbar, wenn das Rezept mindestens eine Raststufe enthält **und**
-  eine gültige Ist-Temperatur vorliegt.
-- **⏹ Stop** — schaltet die Heizung sofort aus und bricht den laufenden Timer ab.
-- **⏭ Nächste Rast** — manueller Stufenwechsel: bricht den laufenden Timer ab und
-  springt zur nächsten Rast. Auf der letzten Rast wird damit der Brauprozess
-  abgeschlossen (Heizung aus, Status `done`, Benachrichtigung).
+- **▶ Start** — starts with the first rest and sets the status to `running`.
+  Start is only available if the recipe contains at least one rest **and** a
+  valid actual temperature is available.
+- **⏹ Stop** — switches the heater off immediately and cancels the running timer.
+- **⏭ Next rest** — manual rest change: cancels the running timer and jumps to
+  the next rest. On the last rest this completes the brewing process (heater
+  off, status `done`, notification).
 
-Während eines laufenden Prozesses zeigt die Karte zusätzlich die **verbleibende
-Haltezeit** der aktiven Rast als sekundengenauen Echtzeit-Countdown an.
+While a process is running, the card additionally shows the **remaining hold
+time** of the active rest as a real-time countdown accurate to the second.
 
-### Temperaturverlauf-Graph
+### Temperature history graph
 
-Unterhalb der Bedienelemente zeigt die Karte einen **Temperaturverlauf-Graphen**.
-Dieser bettet die **native Home-Assistant-Verlaufskarte (`history-graph`)** ein und
-stellt daher die **echten Verlaufsdaten aus dem HA-Recorder** dar — die
-**Ist-Temperatur** des konfigurierten Sensors und die **Solltemperatur in Rot**
-(`sensor.brausteuerung_target_temperature`). Über das **„Dauer"-Auswahlfeld**
-wählst du, wie viele Stunden angezeigt werden (1–4 h). Details siehe Abschnitt
-[Temperaturverlauf / Diagramme](#temperaturverlauf--diagramme).
+Below the controls the card shows a **temperature history graph**. It embeds the
+**native Home Assistant history card (`history-graph`)** and therefore displays
+the **real history data from the HA recorder** — the **actual temperature** of
+the configured sensor and the **target temperature in red**
+(`sensor.brausteuerung_target_temperature`). The **“Duration” selector** lets you
+choose how many hours are shown (1–4 h). For details see section
+[Temperature history / charts](#temperature-history--charts).
 
-### Heizungs-Aktor: Anzeige und manuelles Schalten
+### Heater actuator: display and manual switching
 
-Sobald ein gültiger Heizungs-Aktor (Domäne `switch.*`) ausgewählt ist, zeigt die
-Karte dessen Zustand in Echtzeit neben der Ist-Temperatur an. Ist der Aktor
-eingeschaltet, erscheint zusätzlich ein farbiges **🔥 Flammensymbol**.
+As soon as a valid heater actuator (domain `switch.*`) is selected, the card
+shows its state in real time next to the actual temperature. If the actuator is
+on, a coloured **🔥 flame icon** is shown as well.
 
-Der Zustand lässt sich jederzeit über die Anzeige manuell umschalten (AN/AUS).
-**Hinweis:** Während eines laufenden Brauprozesses kann die Hysterese-Regelung den
-manuell gesetzten Zustand jederzeit gemäß Regelung wieder überschreiben.
+The state can be toggled manually at any time via the display (ON/OFF).
+**Note:** While a brewing process is running, the hysteresis control may override
+the manually set state at any time according to the control logic.
 
-### Rezeptverwaltung (Speichern, Laden, Löschen)
+### Recipe management (save, load, delete)
 
-Über das **📋-Symbol** in der Kopfzeile öffnest du die Rezeptverwaltung. Dort
-kannst du mehrere benannte Braurezepte in einer **Rezept-Bibliothek** ablegen und
-wiederverwenden:
+The **📋 icon** in the header opens the recipe management. There you can store
+several named brewing recipes in a **recipe library** and reuse them:
 
-- **💾 Speichern** — legt das aktuell in der Karte sichtbare (aktive) Rezept
-  unter einem frei wählbaren Namen in der Bibliothek ab. Existiert der Name
-  bereits, wird vor dem Überschreiben eine Bestätigung abgefragt.
-- **📥 Laden** — lädt ein gespeichertes Rezept als aktives Rezept, sodass es
-  bearbeitet oder gestartet werden kann. Während eines laufenden Brauprozesses
-  ist das Laden gesperrt.
-- **🗑 Löschen** — entfernt ein Rezept aus der Bibliothek.
+- **💾 Save** — stores the recipe currently visible (active) in the card under a
+  name of your choice in the library. If the name already exists, you are asked
+  for confirmation before it is overwritten.
+- **📥 Load** — loads a saved recipe as the active recipe so that it can be
+  edited or started. Loading is locked while a brewing process is running.
+- **🗑 Delete** — removes a recipe from the library.
 
-**Wichtig zur Speicherung:** Die Rezept-Bibliothek liegt in der Integration
-(`.storage/brausteuerung.data`) und ist **für alle Benutzer** dieser
-Home-Assistant-Instanz gleich. Sie fasst bis zu 100 Rezepte.
+**Important note on storage:** The recipe library is stored in the integration
+(`.storage/brausteuerung.data`) and is **the same for all users** of this Home
+Assistant instance. It holds up to 100 recipes.
 
-### Einstellungen (⚙️)
+### Settings (⚙️)
 
-Über das **⚙️-Symbol** werden Temperatursensor, Heizungs-Aktor, Hysterese und
-Sicherheits-Offset (𝚫t) geändert (ohne laufenden Brauvorgang zeigt die Karte
-den Offset als 𝚫t, während des Brauvorgangs und in der Pause die konkrete
-Abschalttemperatur). Diese Einstellungen dürfen nur
-**Administratoren** ändern (siehe [Rechtemodell](#9-rechtemodell)); sie sind
-ebenso unter **Einstellungen → Geräte & Dienste → HA-Beer-Brew-Control → Konfigurieren**
-erreichbar. Sensor und Heizung lassen sich während eines laufenden Brauvorgangs
-nicht wechseln.
+The **⚙️ icon** is used to change the temperature sensor, heater actuator,
+hysteresis and safety offset (𝚫t) (without a running brew the card shows the
+offset as 𝚫t; during the brew and while paused it shows the actual shutoff
+temperature). Only **administrators** may change these settings (see
+[Permission model](#9-permission-model)); they are also available under
+**Settings → Devices & services → HA-Beer-Brew-Control → Configure**. Sensor and
+heater cannot be changed while a brew is running.
 
 ---
 
-## 8. Entitäten, Services und WebSocket-Befehle
+## 8. Entities, services and WebSocket commands
 
-Alle Entitäten gehören zum Gerät **HA-Beer-Brew-Control**.
+All entities belong to the device **HA-Beer-Brew-Control**.
 
-| Entität | Bedeutung |
+| Entity | Meaning |
 |---|---|
 | `sensor.brausteuerung_status` | `idle`, `running`, `paused`, `done` |
-| `sensor.brausteuerung_current_rest` | Name der aktiven Rast |
-| `sensor.brausteuerung_target_temperature` | aktuelle Solltemperatur (für den Graphen) |
-| `sensor.brausteuerung_safety_threshold` | Sicherheitsschwelle (Soll + 𝚫t) |
-| `sensor.brausteuerung_hold_end` | Ende der Haltezeit (Zeitstempel) |
-| `sensor.brausteuerung_brew_started` | Start des Brauvorgangs (Zeitstempel) |
-| `button.brausteuerung_start` / `_stop` / `_next_rest` | Start, Stopp, Nächste Rast |
-| `select.brausteuerung_language` / `_unit` | Sprache, Einheit |
-| `number.brausteuerung_hysteresis` / `_safety_offset` | Hysterese, Sicherheits-Offset (nur Admin) |
+| `sensor.brausteuerung_current_rest` | name of the active rest |
+| `sensor.brausteuerung_target_temperature` | current target temperature (for the graph) |
+| `sensor.brausteuerung_safety_threshold` | safety threshold (target + 𝚫t) |
+| `sensor.brausteuerung_hold_end` | end of the hold time (timestamp) |
+| `sensor.brausteuerung_brew_started` | start of the brew (timestamp) |
+| `button.brausteuerung_start` / `_stop` / `_next_rest` | Start, Stop, Next rest |
+| `select.brausteuerung_language` / `_unit` | language, unit |
+| `number.brausteuerung_hysteresis` / `_safety_offset` | hysteresis, safety offset (admin only) |
 
-Services (Domäne `brausteuerung`): `start`, `stop`, `next_rest`, `add_rest`,
+Services (domain `brausteuerung`): `start`, `stop`, `next_rest`, `add_rest`,
 `update_rest`, `delete_rest`, `move_rest`, `clear_recipe`, `save_recipe`,
-`load_recipe`, `delete_recipe`. Beschreibung und Felder stehen unter
-**Entwicklerwerkzeuge → Aktionen**.
+`load_recipe`, `delete_recipe`. Descriptions and fields are available under
+**Developer tools → Actions**.
 
-WebSocket-Befehle der Karte (Präfix `brausteuerung/`): `subscribe`, `rest/add`,
+WebSocket commands of the card (prefix `brausteuerung/`): `subscribe`, `rest/add`,
 `rest/update`, `rest/delete`, `rest/move`, `recipe/clear`, `library/save`,
-`library/load`, `library/delete`, `library/import` (Admin), `control/start`,
-`control/stop`, `control/next_rest`, `settings/update` (Admin),
+`library/load`, `library/delete`, `library/import` (admin), `control/start`,
+`control/stop`, `control/next_rest`, `settings/update` (admin),
 `display/update`.
 
 ---
 
-## 9. Rechtemodell
+## 9. Permission model
 
-- **Nur Administratoren:** Einstellungen ändern (`settings/update`, Options-Dialog),
-  Hysterese/Offset über `number.set_value`, Bibliotheksimport (`library/import`).
-  Das betrifft alles, was die Sicherheit bestimmt: welcher Aktor, welche Schwelle,
-  welches Band.
-- **Alle angemeldeten Benutzer:** Rezept bearbeiten, Bibliothek
-  (Speichern/Laden/Löschen), Start, Stop, Nächste Rast, Sprache und Einheit.
-- **Stop** ist nie eingeschränkt.
-- Aufrufe ohne Benutzer (Automationen, System) sind erlaubt.
-- Das manuelle Schalten der Heizung läuft weiter über die `switch`-Entität mit
-  den Rechten von Home Assistant.
+- **Administrators only:** changing settings (`settings/update`, options dialog),
+  hysteresis/offset via `number.set_value`, library import (`library/import`).
+  This covers everything that determines safety: which actuator, which
+  threshold, which band.
+- **All logged-in users:** editing the recipe, library (save/load/delete),
+  Start, Stop, Next rest, language and unit.
+- **Stop** is never restricted.
+- Calls without a user (automations, system) are allowed.
+- Manual switching of the heater continues to go through the `switch` entity
+  with Home Assistant's permissions.
 
 ---
 
-## 10. Regelung & Sicherheitskonzept
+## 10. Control & safety concept
 
-### Hysterese-Band (konfigurierbar, Default 1,0 °C)
+### Hysteresis band (configurable, default 1.0 °C)
 
-Während der Haltephase regelt die Steuerung die Ist-Temperatur mit einem
-konfigurierbaren Hystereseband unterhalb der Solltemperatur:
+During the hold phase the controller regulates the actual temperature with a
+configurable hysteresis band below the target temperature:
 
-- Ist-Temperatur **< Soll − Hysterese** → Heizung **AN**
-- Ist-Temperatur **≥ Soll** → Heizung **AUS**
-- Ist-Temperatur **im Band** (Soll − Hysterese ≤ Ist < Soll) → Zustand bleibt
-  unverändert
+- Actual temperature **< target − hysteresis** → heater **ON**
+- Actual temperature **≥ target** → heater **OFF**
+- Actual temperature **within the band** (target − hysteresis ≤ actual < target)
+  → state remains unchanged
 
-Gültig sind Werte von **0,1 °C bis 5 °C**, Standard **1,0 °C**.
+Valid values are **0.1 °C to 5 °C**, default **1.0 °C**.
 
-### Sicherheits-Offset (𝚫t) und Übertemperaturschutz
+### Safety offset (𝚫t) and over-temperature protection
 
 ```
-Schwellwert = Solltemperatur + Sicherheits-Offset (𝚫t)
+Threshold = target temperature + safety offset (𝚫t)
 ```
 
-Beispiel: Solltemperatur 67 °C, 𝚫t 10 °C → Abschaltung bei 77 °C. Gültig sind
-0–20 °C, Standard 10 °C. Überschreitet die Ist-Temperatur den Schwellwert (in
-`running` und `paused`), schaltet die Integration die Heizung sofort aus, setzt
-den Status auf `paused` und benachrichtigt einmal pro Ereignis. Die Fortsetzung
-erfordert eine bewusste Benutzeraktion.
+Example: target temperature 67 °C, 𝚫t 10 °C → shutoff at 77 °C. Valid values are
+0–20 °C, default 10 °C. If the actual temperature exceeds the threshold (in
+`running` and `paused`), the integration switches the heater off immediately,
+sets the status to `paused` and sends one notification per event. Resuming
+requires a deliberate user action.
 
-Ohne laufenden Brauvorgang (`idle`, `done`) zeigt die Karte den Offset als
-„Sicherheitsabschaltung bei 𝚫t …“, während des Brauvorgangs (und in der Pause)
-die konkrete Abschalttemperatur ohne 𝚫t.
+Without a running brew (`idle`, `done`) the card shows the offset as
+“Safety shutoff at 𝚫t …”; during the brew (and while paused) it shows the
+actual shutoff temperature without 𝚫t.
 
-### Was die Software tut (Fail-safe)
+### What the software does (fail-safe)
 
-- **Heizung AUS** beim Einrichten (Initial-OFF), beim Entladen/Neuladen der
-  Integration, bei Stop, bei Brauende und beim Herunterfahren von Home Assistant.
-  Beim HA-Stop wird zuerst abgeschaltet, **bevor** andere Integrationen gestoppt
-  werden (Shutdown-Job, höchstens 5 s + 5 s), und beim Stop-Ereignis noch einmal.
-- **Kein Auto-Resume:** Nach einem Neustart steht der Status auf `idle`; ein
-  unterbrochener Brauvorgang wird nicht von selbst fortgesetzt.
-- **Kommunikationsverlust:** Ungültiger Sensorwert in `running` → Heizung sofort
-  AUS. Bleibt der Wert `COMM_LOSS_TIMEOUT` = **30 s** ungültig → `paused` und
-  Benachrichtigung.
-- **Veralteter Sensorwert (Watchdog):** Ist die Heizung seit mindestens
-  `STALE_SENSOR_TIMEOUT` = **10 min** an und hat der Sensor seit 10 min nichts
-  gemeldet → `paused`, Heizung AUS, Benachrichtigung. Bei ausgeschalteter Heizung
-  löst er nie aus (keine Fehlalarme bei Sensoren, die nur Änderungen melden).
-- **Aktor-Watchdog:** `ACTUATOR_VERIFY_DELAY` = **15 s** nach jedem AUS-Befehl wird
-  geprüft, ob der Aktor wirklich aus ist. Falls nicht: erneuter AUS-Befehl,
-  einmalige Benachrichtigung, `paused`; höchstens `ACTUATOR_MAX_RETRIES` = **3**
-  Wiederholungen, danach nur ein Log-Eintrag. Ist der Aktor in `running`
-  `ACTUATOR_UNAVAILABLE_TIMEOUT` = **30 s** nicht erreichbar → `paused` und
-  Benachrichtigung.
-- **Keine Befehlsflut:** AUS wird nicht im Sekundentakt wiederholt. Schlägt das
-  Initial-OFF fehl, folgt ein neuer Versuch bei einer Zustandsänderung oder
-  höchstens alle `INITIAL_OFF_RETRY_INTERVAL` = **60 s**. Einzelne Aktoraufrufe
-  haben ein Timeout von 10 s.
-- **Fehler im Code:** Jede unerwartete Ausnahme führt zu Heizung AUS und `paused`.
-- **Zwei Regler verhindern:** Start-Sperre, solange alte v2.x-Automationen aktiv
-  sind.
-- **Kein Netzwerkzugriff:** keine externen Pakete, keine Verbindungen nach außen,
-  kein `eval`/`exec`. Alle Eingaben werden im Server geprüft.
-- Der statische Pfad `/brausteuerung_frontend/` ist wie `/local/` ohne Anmeldung
-  abrufbar und liefert nur die beiden JS-Dateien der Karte, keine Daten.
+- **Heater OFF** on setup (initial OFF), when unloading/reloading the
+  integration, on Stop, at the end of the brew and when Home Assistant shuts
+  down. On HA stop the heater is switched off first, **before** other
+  integrations are stopped (shutdown job, at most 5 s + 5 s), and once more on
+  the stop event.
+- **No auto-resume:** after a restart the status is `idle`; an interrupted brew
+  is not resumed on its own.
+- **Communication loss:** invalid sensor value in `running` → heater OFF
+  immediately. If the value stays invalid for `COMM_LOSS_TIMEOUT` = **30 s** →
+  `paused` and notification.
+- **Stale sensor value (watchdog):** if the heater has been on for at least
+  `STALE_SENSOR_TIMEOUT` = **10 min** and the sensor has not reported anything
+  for 10 min → `paused`, heater OFF, notification. It never triggers while the
+  heater is off (no false alarms for sensors that only report changes).
+- **Actuator watchdog:** `ACTUATOR_VERIFY_DELAY` = **15 s** after every OFF
+  command it checks whether the actuator is really off. If not: another OFF
+  command, a one-time notification, `paused`; at most `ACTUATOR_MAX_RETRIES` =
+  **3** retries, after that only a log entry. If the actuator is unreachable in
+  `running` for `ACTUATOR_UNAVAILABLE_TIMEOUT` = **30 s** → `paused` and
+  notification.
+- **No command flooding:** OFF is not repeated every second. If the initial OFF
+  fails, a new attempt follows on a state change or at most every
+  `INITIAL_OFF_RETRY_INTERVAL` = **60 s**. Individual actuator calls have a
+  timeout of 10 s.
+- **Errors in the code:** every unexpected exception results in heater OFF and
+  `paused`.
+- **Preventing two controllers:** start lock as long as old v2.x automations are
+  active.
+- **No network access:** no external packages, no outgoing connections, no
+  `eval`/`exec`. All input is validated on the server.
+- The static path `/brausteuerung_frontend/` can be accessed without login, like
+  `/local/`, and only serves the card's two JS files, no data.
 
-### Was die Software ausdrücklich NICHT ersetzt
+### What the software explicitly does NOT replace
 
-Einen unabhängigen Temperaturbegrenzer (STB), einen Aktor, der bei Ausfall von
-Home Assistant selbst abschaltet, und die Aufsicht durch einen Menschen.
+An independent temperature limiter (STB), an actuator that switches off by
+itself if Home Assistant fails, and supervision by a human.
 
-### ⚠️ Wichtige Sicherheitshinweise
+### ⚠️ Important safety notes
 
-HA-Beer-Brew-Control steuert reale Hardware mit hohen Temperaturen. Die folgenden
-Hinweise sind **zwingend** zu beachten:
+HA-Beer-Brew-Control controls real hardware at high temperatures. The following
+notes **must** be observed:
 
-- **Unabhängiger Hardware-Übertemperaturschutz (erforderlich):** Zusätzlich zur
-  Software-Überwachung ist ein vom System **unabhängiger** Hardware-
-  Übertemperaturschutz (z. B. ein mechanischer Temperaturbegrenzer / STB) zu
-  verwenden. Er muss unabhängig von Home Assistant, der Sensor-Entität und den
-  Automationen wirken.
-- **Physische Abschaltbarkeit bei HA-Ausfall (erforderlich):** Der Heizungs-Aktor
-  **muss** bei einem Ausfall von Home Assistant physisch abschalten können. Wähle
-  einen Aktor, der im stromlosen bzw. nicht angesteuerten Zustand öffnet
-  (Heizung aus), sodass ein Software- oder Verbindungsausfall nicht zu
-  unkontrolliertem Heizen führt.
-- Betreibe die Anlage **nie unbeaufsichtigt**.
-
----
-
-## 11. Speicherorte
-
-- **Rezept, Rezeptname und Bibliothek:** `<config>/.storage/brausteuerung.data`,
-  instanzweit für alle Benutzer.
-- **Einstellungen** (Sensor, Heizung, Hysterese, Offset, Sprache, Einheit): in den
-  Optionen des Konfigurationseintrags (`.storage/core.config_entries`).
-- **Laufzeitzustand** (Status, aktive Rast, Timer): nur im Speicher, nach einem
-  Neustart `idle`.
-- **Anzeigedauer des Graphen:** pro Benutzer im HA-Benutzerspeicher.
-- Beim Entfernen der Integration bleiben die Daten in `.storage/brausteuerung.data`
-  erhalten.
-- Schreibfehler (z. B. volle Platte) meldet Home Assistant selbst im Log. Die
-  Änderung ist dann nur bis zum nächsten Neustart wirksam.
+- **Independent hardware over-temperature protection (required):** In addition
+  to the software monitoring, a hardware over-temperature protection that is
+  **independent** of the system (e.g. a mechanical temperature limiter / STB)
+  must be used. It must work independently of Home Assistant, the sensor entity
+  and the automations.
+- **Physical shutoff if HA fails (required):** The heater actuator **must** be
+  able to switch off physically if Home Assistant fails. Choose an actuator
+  that opens when de-energised or not driven (heater off), so that a software
+  or connection failure cannot lead to uncontrolled heating.
+- **Never** operate the system **unattended**.
 
 ---
 
-## 12. Temperaturverlauf und Sensor-Kalibrierung
+## 11. Storage locations
 
-### Temperaturverlauf / Diagramme
+- **Recipe, recipe name and library:** `<config>/.storage/brausteuerung.data`,
+  shared by all users of the instance.
+- **Settings** (sensor, heater, hysteresis, offset, language, unit): in the
+  options of the config entry (`.storage/core.config_entries`).
+- **Runtime state** (status, active rest, timer): in memory only, `idle` after a
+  restart.
+- **Display duration of the graph:** per user in the HA user storage.
+- When the integration is removed, the data in `.storage/brausteuerung.data` is
+  kept.
+- Write errors (e.g. full disk) are reported by Home Assistant itself in the
+  log. The change is then only effective until the next restart.
 
-Die Karte bettet die **native Home-Assistant-Verlaufskarte (`history-graph`)**
-direkt in die HA-Beer-Brew-Control-Karte ein. Dadurch nutzt der Graph dieselbe
-Darstellung wie die eingebauten HA-Diagramme und liest die **echten
-Verlaufsdaten aus dem HA-Recorder**:
+---
 
-- **Ist- und Solltemperatur:** Angezeigt werden die **Ist-Temperatur** des
-  konfigurierten Sensors und die **Solltemperatur**
-  (`sensor.brausteuerung_target_temperature`). Die Solltemperatur wird **in Rot**
-  gezeichnet (`color: "red"`, unterstützt ab Home Assistant **2026.6**).
-- **Echte Historie aus dem Recorder:** Der Verlauf wird nicht in der Karte
-  aufgezeichnet, sondern kommt aus dem HA-Recorder. Er ist dadurch nach einem
-  Neuladen, einem Ansichts-/Desktop-Wechsel oder einem Neustart sofort wieder
-  vollständig vorhanden und aktualisiert sich live.
-- **Fenster beginnt beim Brauvorgang:** Sobald ein Brauvorgang läuft, wird das
-  Zeitfenster des Graphen auf den **Startzeitpunkt** begrenzt (`hours_to_show` =
-  Zeit seit Start, gedeckelt auf die gewählte Dauer). Dadurch beginnen **beide**
-  Linien (Ist-Temperatur und Solltemperatur) beim Brauvorgang; ältere Werte
-  liegen außerhalb des Fensters und werden nicht angezeigt — ganz ohne
-  Datenbank-Löschung. Läuft der Brauvorgang länger als die gewählte Dauer, wird
-  daraus ein normales gleitendes Fenster (1–4 h). Das funktioniert auch, wenn der
-  Brauvorgang extern (z. B. per Automation) gestartet wird.
-- **Anzeigedauer wählbar (1–4 h):** Über das Auswahlfeld **„Dauer"** im
-  Graph-Kopf stellst du `hours_to_show` ein (1, 2, 3 oder 4 Stunden). Die Wahl
-  wird **benutzerbezogen** im HA-Benutzerspeicher gespeichert.
-- **Beschriftete Achsen:** Achsen (Zeit und Temperatur) werden von der nativen
-  HA-Karte beschriftet und skaliert.
+## 12. Temperature history and sensor calibration
 
-> **Voraussetzungen:** Der **Recorder** muss aktiv sein (Standard in Home
-> Assistant) und sowohl die Sensor-Entität als auch
-> `sensor.brausteuerung_target_temperature` aufzeichnen. Beide werden
-> standardmäßig vom Recorder erfasst; falls du den Recorder gefiltert hast
-> (`include`/`exclude`), stelle sicher, dass diese Entitäten enthalten sind.
+### Temperature history / charts
 
-Für eine **dauerhafte** Aufzeichnung über Tage/Wochen (Langzeitstatistik, Zoom)
-kannst du ergänzend eine eigene **`statistics-graph`**-Karte ins Dashboard legen,
-z. B.:
+The card embeds the **native Home Assistant history card (`history-graph`)**
+directly into the HA-Beer-Brew-Control card. The graph therefore uses the same
+presentation as the built-in HA charts and reads the **real history data from
+the HA recorder**:
+
+- **Actual and target temperature:** the **actual temperature** of the
+  configured sensor and the **target temperature**
+  (`sensor.brausteuerung_target_temperature`) are shown. The target temperature
+  is drawn **in red** (`color: "red"`, supported from Home Assistant
+  **2026.6**).
+- **Real history from the recorder:** the history is not recorded in the card
+  but comes from the HA recorder. It is therefore immediately complete again
+  after a reload, a view/desktop switch or a restart, and updates live.
+- **Window starts with the brew:** as soon as a brew is running, the time window
+  of the graph is limited to the **start time** (`hours_to_show` = time since
+  start, capped at the selected duration). As a result **both** lines (actual
+  and target temperature) begin with the brew; older values lie outside the
+  window and are not shown — without deleting anything from the database. If
+  the brew runs longer than the selected duration, it becomes a normal sliding
+  window (1–4 h). This also works if the brew is started externally (e.g. by an
+  automation).
+- **Selectable display duration (1–4 h):** the **“Duration”** selector in the
+  graph header sets `hours_to_show` (1, 2, 3 or 4 hours). The choice is stored
+  **per user** in the HA user storage.
+- **Labelled axes:** the axes (time and temperature) are labelled and scaled by
+  the native HA card.
+
+> **Requirements:** The **recorder** must be active (default in Home
+> Assistant) and record both the sensor entity and
+> `sensor.brausteuerung_target_temperature`. Both are recorded by default; if
+> you have filtered the recorder (`include`/`exclude`), make sure these
+> entities are included.
+
+For **long-term** recording over days/weeks (long-term statistics, zoom) you can
+additionally add your own **`statistics-graph`** card to the dashboard, e.g.:
 
 ```yaml
 type: statistics-graph
@@ -484,21 +481,19 @@ stat_types:
   - mean
 ```
 
-### Sensor-Offset (Kalibrierung) — in Home Assistant
+### Sensor offset (calibration) — in Home Assistant
 
-Ein **Sensor-Offset** zur Kalibrierung der Ist-Temperatur (z. B. wenn der
-Temperaturfühler systematisch 1–2 °C zu hoch oder zu niedrig misst) wird
-**nicht** in HA-Beer-Brew-Control selbst, sondern direkt in **Home Assistant**
-vorgenommen. HA-Beer-Brew-Control liest den Sensorwert unverändert aus der gewählten
-Entität.
+A **sensor offset** for calibrating the actual temperature (e.g. if the
+temperature probe systematically reads 1–2 °C too high or too low) is **not**
+set in HA-Beer-Brew-Control itself, but directly in **Home Assistant**.
+HA-Beer-Brew-Control reads the sensor value unchanged from the selected entity.
 
-Empfohlenes Vorgehen: einen Helfer bzw. eine abgeleitete Sensor-Entität in HA
-anlegen, die den Rohwert um den Offset korrigiert, und diese korrigierte Entität
-anschließend in HA-Beer-Brew-Control als Temperatursensor auswählen. Beispiele:
+Recommended approach: create a helper or a derived sensor entity in HA that
+corrects the raw value by the offset, and then select this corrected entity as
+the temperature sensor in HA-Beer-Brew-Control. Examples:
 
-- Über **Einstellungen → Geräte & Dienste → Helfer** einen passenden Helfer
-  anlegen, oder
-- einen **Template-Sensor** in `configuration.yaml` definieren, z. B.:
+- Create a suitable helper via **Settings → Devices & services → Helpers**, or
+- define a **template sensor** in `configuration.yaml`, e.g.:
 
   ```yaml
   template:
@@ -508,58 +503,63 @@ anschließend in HA-Beer-Brew-Control als Temperatursensor auswählen. Beispiele
           state: "{{ states('sensor.ds18b20_maische') | float(0) + 0.5 }}"
   ```
 
-  Den so erzeugten Sensor (`sensor.maische_temperatur_kalibriert`) dann in den
-  Einstellungen im **Sensor**-Feld auswählen.
+  Then select the resulting sensor (`sensor.maische_temperatur_kalibriert`) in
+  the **Sensor** field of the settings.
 
 ---
 
 ## 13. Updates
 
-Updates kommen über HACS (**HACS → HA-Beer-Brew-Control → Aktualisieren**, danach
-Home Assistant neu starten). Ein manuelles Versionieren der Ressource entfällt:
-Die Integration bindet die Karte mit ihrer Version (`?v=3.0.4`) ein, der Browser
-lädt nach einem Update automatisch die neue Datei. Passt die geladene Karte nicht
-zur Version der Integration, zeigt die Karte einen Hinweis; dann die Seite neu
-laden.
+Updates are delivered via HACS (**HACS → HA-Beer-Brew-Control → Update**, then
+restart Home Assistant). There is no need to version the resource manually: the
+integration registers the card with its version (`?v=3.0.4`), and the browser
+loads the new file automatically after an update. If the loaded card does not
+match the version of the integration, the card shows a notice; then reload the
+page.
 
 ---
 
-## 14. Entwicklung & Tests
+## 14. Development & tests
 
-Python 3.14 mit [uv](https://docs.astral.sh/uv/):
+Python 3.14 with [uv](https://docs.astral.sh/uv/):
 
 ```bash
 uv venv --python 3.14 .venv
 uv pip install --python .venv/bin/python -r requirements_test.txt
 
-.venv/bin/pytest tests/ --cov --cov-report=term-missing   # Integrationstests
-.venv/bin/ruff check custom_components tests                # Lint
+.venv/bin/pytest tests/ --cov --cov-report=term-missing   # integration tests
+.venv/bin/ruff check custom_components tests                # lint
 ```
 
-Die Karte wird mit [Vitest](https://vitest.dev/) getestet (Node.js nötig):
+The card is tested with [Vitest](https://vitest.dev/) (Node.js required):
 
 ```bash
 npm install
 npm run test:run
 ```
 
-Die GitHub-Action `.github/workflows/validate.yml` führt die HACS-Validierung und
-`hassfest` aus. Für den Betrieb in Home Assistant sind diese Schritte **nicht**
-notwendig.
+The GitHub Action `.github/workflows/validate.yml` runs the HACS validation and
+`hassfest`. These steps are **not** required for running the integration in
+Home Assistant.
+
+**Documentation in two languages:** The documentation is available in English
+([`README.md`](README.md), the default for GitHub and HACS) and in German
+([`README.de.md`](README.de.md)). Every change must be applied to **both**
+files; `tests/test_repo_consistency.py` checks that both versions stay in sync.
 
 ---
 
-## 15. Veröffentlichung im HACS-Default-Store
+## 15. Publishing in the HACS default store
 
-1. Öffentliches GitHub-Repository
+1. Create the public GitHub repository
    [`JamFfm/HA-Beer-Brew-Control`](https://github.com/JamFfm/HA-Beer-Brew-Control)
-   mit Beschreibung und Topics anlegen; die
-   Action `Validate` (HACS und hassfest) muss grün sein.
-2. Das Icon liegt unter `custom_components/brausteuerung/brand/icon.png`.
-3. Ein GitHub-**Release** (z. B. `v3.0.4`) erstellen. Vorher prüfen, dass der
-   Ordner `custom_components/brausteuerung/` auf GitHub vollständig ist (alle
-   `*.py`-Dateien und `translations/`, aber kein `__pycache__/`).
-4. Pull Request im Repository `hacs/default` stellen (Datei `integration`).
+   with a description and topics; the `Validate` action (HACS and hassfest)
+   must be green.
+2. The icon is located at `custom_components/brausteuerung/brand/icon.png`.
+3. Create a GitHub **release** (e.g. `v3.0.4`). Before that, check that the
+   folder `custom_components/brausteuerung/` is complete on GitHub (all `*.py`
+   files and `translations/`, but no `__pycache__/`).
+4. Open a pull request in the `hacs/default` repository (file `integration`).
 
 ---
 
@@ -567,43 +567,41 @@ notwendig.
 
 ### 3.0.4
 
-- Manifest: Kategorie `appliances_cleaning.cooking` („Appliances & cleaning →
-  Cooking“) für HACS und den Marketplace ergänzt. Keine Funktionsänderung.
+- Manifest: added the category `appliances_cleaning.cooking` (“Appliances &
+  cleaning → Cooking”) for HACS and the Marketplace. No functional change.
 
 ### 3.0.3
 
-- Anpassung: Die Zeile „Sicherheitsabschaltung bei …“ zeigt 𝚫t nur noch, wenn
-  der Sicherheits-Offset angezeigt wird (`idle`, `done`). Während des
-  Brauvorgangs und in der Pause erscheint die konkrete Abschalttemperatur ohne 𝚫t.
+- Change: the line “Safety shutoff at …” only shows 𝚫t when the safety offset
+  is displayed (`idle`, `done`). During the brew and while paused, the actual
+  shutoff temperature is shown without 𝚫t.
 
 ### 3.0.2
 
-- Fix: Bei geöffnetem Panel „Rezepte verwalten“ aktualisierte der Statusblock
-  nicht (Heizungs-Schalter AN/AUS, Ist-Temperatur, Countdown). Er aktualisiert
-  jetzt live wie in der Hauptansicht; ein im Namensfeld getippter Text bleibt
-  erhalten.
+- Fix: while the “Manage recipes” panel was open, the status block did not
+  update (heater switch ON/OFF, actual temperature, countdown). It now updates
+  live as in the main view; text typed into the name field is kept.
 
 ### 3.0.1
 
-- Fix: Hinzufügen der Integration brach mit „cannot import name 'validation' from
-  partially initialized module … (circular import)“ ab. Ursache war kein
-  Zirkularimport, sondern im Release v3.0.0 fehlende Dateien (u. a.
-  `validation.py`, `config_flow.py`, `const.py`, `translations/`). Release
-  vollständig; die Integration prüft beim Laden jetzt alle Moduldateien und nennt
-  fehlende Dateien im Protokoll mit klarer Meldung.
+- Fix: adding the integration failed with “cannot import name 'validation' from
+  partially initialized module … (circular import)”. The cause was not a
+  circular import but files missing from the v3.0.0 release (including
+  `validation.py`, `config_flow.py`, `const.py`, `translations/`). The release
+  is complete; the integration now checks all module files when loading and
+  names missing files in the log with a clear message.
 
 ### 3.0.0
 
-- Neu: Python-Custom-Integration für HACS; Regelung, Ablauf und Sicherheit laufen
-  im Home-Assistant-Server.
-- Neu: Einrichtung und Einstellungen über den Konfigurationsdialog, Entitäten und
-  Services, Übernahme der v2.x-Werte und der Bibliothek.
-- Neu: Watchdogs für veraltete Sensorwerte und hängende Aktoren, Heizung AUS beim
-  Herunterfahren, Start-Sperre bei aktiven Alt-Automationen, Admin-Rechte für
-  sicherheitsrelevante Einstellungen.
-- Neu: instanzweite Rezept-Bibliothek; die 255-Zeichen-Grenze entfällt
-  (bis 30 Rasten).
-- Die Karte wird von der Integration ausgeliefert; Optik und Bedienung bleiben
-  gleich.
-- Entfallen: Helfer aus `configuration.yaml` und die 5 Automationen aus
-  `automations.yaml` (zur Referenz unter `legacy/`).
+- New: Python custom integration for HACS; control, sequence and safety run on
+  the Home Assistant server.
+- New: setup and settings via the configuration dialog, entities and services,
+  takeover of the v2.x values and the library.
+- New: watchdogs for stale sensor values and stuck actuators, heater OFF on
+  shutdown, start lock while old automations are active, admin rights for
+  safety-relevant settings.
+- New: instance-wide recipe library; the 255-character limit is gone
+  (up to 30 rests).
+- The card is served by the integration; look and operation stay the same.
+- Removed: helpers from `configuration.yaml` and the 5 automations from
+  `automations.yaml` (kept for reference under `legacy/`).

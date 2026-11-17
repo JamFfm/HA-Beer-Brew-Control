@@ -218,6 +218,8 @@ def test_repo_structure() -> None:
     """Erwartete Repo-Struktur (AK 31)."""
     required = [
         "README.md",
+        "README.de.md",
+        ".kiro/steering/documentation.md",
         "LICENSE",
         "hacs.json",
         "package.json",
@@ -255,9 +257,179 @@ def test_brand_icon_is_256_png() -> None:
 
 
 def test_no_additional_markdown() -> None:
-    """Außer README.md gibt es keine .md-Dateien (F5, AK 31)."""
-    markdown = [str(p) for p in _repo_files() if p.suffix.lower() == ".md"]
-    assert markdown == ["README.md"]
+    """Nur README.md, README.de.md und die Steering-Datei sind .md-Dateien (F5, AK 31)."""
+    markdown = sorted(str(p) for p in _repo_files() if p.suffix.lower() == ".md")
+    assert markdown == sorted(["README.md", "README.de.md", ".kiro/steering/documentation.md"])
+
+
+# ---------------------------------------------------------------------------
+# README.md (englisch, Standard) und README.de.md (deutsch) synchron halten
+# ---------------------------------------------------------------------------
+
+README_EN = REPO / "README.md"
+README_DE = REPO / "README.de.md"
+READMES = (README_EN, README_DE)
+MY_LINK = (
+    "https://my.home-assistant.io/redirect/hacs_repository/"
+    "?owner=JamFfm&repository=HA-Beer-Brew-Control&category=integration"
+)
+MY_BADGE = "https://my.home-assistant.io/badges/hacs_repository.svg"
+_FENCE_RE = re.compile(r"^\s*```")
+_HEADING_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
+
+
+def _readme(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def _lines_outside_code(text: str) -> list[str]:
+    """Zeilen außerhalb von Code-Blöcken."""
+    result: list[str] = []
+    in_code = False
+    for line in text.splitlines():
+        if _FENCE_RE.match(line):
+            in_code = not in_code
+            continue
+        if not in_code:
+            result.append(line)
+    return result
+
+
+def _headings(text: str) -> list[tuple[int, str]]:
+    result: list[tuple[int, str]] = []
+    for line in _lines_outside_code(text):
+        match = _HEADING_RE.match(line)
+        if match:
+            result.append((len(match.group(1)), match.group(2)))
+    return result
+
+
+def _slug(title: str) -> str:
+    """GitHub-Anker: klein, Satzzeichen/Emojis entfernen, Leerzeichen → '-'."""
+    title = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", title).strip().lower()
+    title = re.sub(r"[^\w\- ]", "", title)
+    return title.replace(" ", "-")
+
+
+def _anchors(text: str) -> set[str]:
+    anchors: set[str] = set()
+    counts: dict[str, int] = {}
+    for _, title in _headings(text):
+        slug = _slug(title)
+        n = counts.get(slug, 0)
+        anchors.add(slug if n == 0 else f"{slug}-{n}")
+        counts[slug] = n + 1
+    return anchors
+
+
+def _section_numbers(text: str) -> list[str]:
+    numbers: list[str] = []
+    for level, title in _headings(text):
+        if level == 2:
+            match = re.match(r"(\d+)\.\s", title)
+            numbers.append(match.group(1) if match else "")
+    return numbers
+
+
+def _code_blocks(text: str) -> list[str]:
+    blocks: list[str] = []
+    current: list[str] | None = None
+    for line in text.splitlines():
+        if _FENCE_RE.match(line):
+            if current is None:
+                current = [line.strip()]
+            else:
+                blocks.append("\n".join(current))
+                current = None
+        elif current is not None:
+            current.append(line)
+    assert current is None, "nicht geschlossener Code-Block"
+    return blocks
+
+
+def _images(text: str) -> list[str]:
+    html = re.findall(r'<img\s+src="([^"]+)"', text)
+    markdown = re.findall(r"!\[[^\]]*\]\(([^)]+)\)", text)
+    return sorted(html + markdown)
+
+
+@pytest.mark.parametrize("path", READMES, ids=lambda p: p.name)
+def test_readme_basics(path: Path) -> None:
+    """Version, My-Link-Badge (2×), Repo-URL und Sicherheitszeichen in beiden READMEs."""
+    text = _readme(path)
+    version = _load(INTEGRATION / "manifest.json")["version"]
+    assert f"?v={version}" in text
+    assert f"v{version}" in text
+    assert f"### {version}" in text
+    assert text.count(f"]({MY_LINK})") == 2
+    assert text.count(f"({MY_BADGE})") == 2
+    assert REPO_URL in text
+    assert "𝚫t" in text
+    assert "`type: custom:brausteuerung-card`" in text
+    assert "STB" in text
+
+
+def test_readme_language_switch() -> None:
+    """Beide READMEs verlinken sich gegenseitig direkt unter der Hauptüberschrift."""
+    en = _readme(README_EN).splitlines()
+    de = _readme(README_DE).splitlines()
+    assert en[0] == de[0] == "# 🍺 HA-Beer-Brew-Control"
+    assert "🇬🇧 **English** · 🇩🇪 [Deutsch](README.de.md)" in en[:4]
+    assert "🇬🇧 [English](README.md) · 🇩🇪 **Deutsch**" in de[:4]
+    assert "](README.de.md)" in _readme(README_EN)
+    assert "](README.md)" in _readme(README_DE)
+
+
+def test_readme_same_structure() -> None:
+    """Gleiche Überschriftenanzahl je Ebene und gleiche ##-Nummerierung (1–16)."""
+    en, de = _readme(README_EN), _readme(README_DE)
+    for level in (1, 2, 3):
+        en_count = sum(1 for lvl, _ in _headings(en) if lvl == level)
+        de_count = sum(1 for lvl, _ in _headings(de) if lvl == level)
+        assert en_count == de_count, f"Ebene {level}: {en_count} ≠ {de_count}"
+    assert [lvl for lvl, _ in _headings(en)] == [lvl for lvl, _ in _headings(de)]
+    assert _section_numbers(en) == _section_numbers(de) == [str(n) for n in range(1, 17)]
+    # CHANGELOG-Versionen identisch.
+    en_versions = [t for lvl, t in _headings(en) if lvl == 3 and re.fullmatch(r"\d+\.\d+\.\d+", t)]
+    de_versions = [t for lvl, t in _headings(de) if lvl == 3 and re.fullmatch(r"\d+\.\d+\.\d+", t)]
+    assert en_versions == de_versions
+    assert en_versions
+
+
+def test_readme_same_code_images_badges() -> None:
+    """Gleich viele Code-Blöcke (gleiche Sprache), Bilder und Badge-Links."""
+    en, de = _readme(README_EN), _readme(README_DE)
+    en_blocks, de_blocks = _code_blocks(en), _code_blocks(de)
+    assert len(en_blocks) == len(de_blocks)
+    assert [b.splitlines()[0] for b in en_blocks] == [b.splitlines()[0] for b in de_blocks]
+    assert _images(en) == _images(de)
+    assert len(_images(en)) == 6  # 4 Bilder aus pics/ + 2 Badges
+    assert "pics/Manage%20Recipes.png" in _images(en)
+    badge = re.compile(r"\[!\[[^\]]*\]\(([^)]+)\)\]\(([^)]+)\)")
+    assert sorted(badge.findall(en)) == sorted(badge.findall(de))
+    assert len(badge.findall(en)) == 2
+
+
+def test_readme_same_versions_and_urls() -> None:
+    """?v=X.Y.Z, die Manifest-Version und alle URLs kommen in beiden gleich oft vor."""
+    en, de = _readme(README_EN), _readme(README_DE)
+    version = _load(INTEGRATION / "manifest.json")["version"]
+    assert en.count(version) == de.count(version)
+    for found in set(re.findall(r"\?v=\d+\.\d+\.\d+", en + de)):
+        assert en.count(found) == de.count(found), found
+    url = re.compile(r"https?://[^\s)\"'`]+")
+    assert sorted(url.findall(en)) == sorted(url.findall(de))
+
+
+@pytest.mark.parametrize("path", READMES, ids=lambda p: p.name)
+def test_readme_internal_anchors_resolve(path: Path) -> None:
+    """Jeder interne #-Link zeigt in seiner Datei auf eine existierende Überschrift."""
+    text = _readme(path)
+    links = re.findall(r"\]\(#([^)]+)\)", text)
+    assert links, "keine internen Links gefunden"
+    anchors = _anchors(text)
+    missing = [link for link in links if link not in anchors]
+    assert missing == []
 
 
 def test_workflow_validates_hacs_and_hassfest() -> None:
